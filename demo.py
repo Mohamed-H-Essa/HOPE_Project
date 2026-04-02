@@ -37,6 +37,9 @@ ARROW = "→"
 BULLET = "•"
 SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
+# Device ID for ESP32 glove simulation
+DEVICE_ID = "hope-glove-01"
+
 
 def print_banner():
     """Print fancy ASCII banner."""
@@ -343,6 +346,31 @@ def phase_2_questionnaire(session_id):
         return False
 
 
+def phase_2b_link_device(session_id):
+    """Phase 2.5: Link the HOPE glove device to this session."""
+    print_section("PHASE 2.5: Device Linking")
+
+    print(f"{CYAN}{ARROW} Linking HOPE glove to session...{RESET}")
+    time.sleep(0.5)
+
+    try:
+        response = requests.put(
+            f"{API_BASE}/sessions/{session_id}/device",
+            json={"device_id": DEVICE_ID},
+            timeout=10
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        print(f"{GREEN}{CHECK} Device linked successfully!{RESET}")
+        print(f"{DIM}  Device ID: {DEVICE_ID}{RESET}")
+        print(f"{DIM}  Status: {result.get('status', 'linked')}{RESET}\n")
+        return True
+    except Exception as e:
+        print(f"{RED}{CROSS} Failed to link device: {e}{RESET}")
+        return False
+
+
 def phase_3_assessment(session_id):
     """Phase 3: Assessment with sensor data."""
     print_section("PHASE 3: Glove Assessment")
@@ -358,13 +386,18 @@ def phase_3_assessment(session_id):
     # Show live sensor feed
     print_sensor_feed(sensor_data)
 
-    print(f"{CYAN}{ARROW} Sending assessment data to AI...{RESET}")
+    print(f"{CYAN}{ARROW} Sending assessment data to AI via /ingest...{RESET}")
     spinner("Analyzing movement patterns", duration=2.5, check_done=True)
 
     try:
+        # The glove sends only device_id + data. The backend determines the phase
+        # from the session's current status — the glove never needs to know.
         response = requests.post(
-            f"{API_BASE}/sessions/{session_id}/assess",
-            json={"data": sensor_data},
+            f"{API_BASE}/ingest",
+            json={
+                "device_id": DEVICE_ID,
+                "data": sensor_data
+            },
             timeout=30
         )
         response.raise_for_status()
@@ -378,20 +411,16 @@ def phase_3_assessment(session_id):
 
             # Show pass/fail indicators
             print(f"{BOLD}  Assessment Scores:{RESET}")
-            if 'metrics' in ar:
-                for metric, value in ar['metrics'].items():
-                    if isinstance(value, (int, float)):
-                        color = GREEN if value >= 70 else YELLOW if value >= 50 else RED
-                        print_progress_bar(f"  {metric.replace('_', ' ').title()}", value)
+            for task, passed in ar.items():
+                if task == 'needed_training':
+                    continue
+                if isinstance(passed, bool):
+                    status = f"{GREEN}PASS{RESET}" if passed else f"{RED}FAIL{RESET}"
+                    print(f"    {BULLET} {task}: {status}")
 
-            if 'overall_score' in ar:
-                score = ar['overall_score']
-                color = GREEN if score >= 70 else YELLOW if score >= 50 else RED
-                print(f"\n  {BOLD}Overall Score:{RESET} {color}{BOLD}{score:.1f}%{RESET}")
-
-            if 'needed_training' in ar:
+            if 'needed_training' in results:
                 print(f"\n  {BOLD}Recommended Exercises:{RESET}")
-                for ex in ar['needed_training']:
+                for ex in results['needed_training']:
                     print(f"    {YELLOW}{BULLET}{RESET} {ex.replace('_', ' ').title()}")
 
         return results
@@ -422,10 +451,15 @@ def phase_4_poll_results(session_id):
                 ar = session['assessment_results']
                 lines = []
 
-                if 'overall_score' in ar:
-                    score = ar['overall_score']
-                    status = f"{GREEN}PASS{RESET}" if score >= 70 else f"{YELLOW}MARGINAL{RESET}" if score >= 50 else f"{RED}NEEDS WORK{RESET}"
-                    lines.append(f"Overall Score: {BOLD}{score:.1f}%{RESET} - {status}")
+                # Show per-task PASS/FAIL results
+                task_results = {k: v for k, v in ar.items() if k != 'needed_training'}
+                if task_results:
+                    passed = sum(1 for v in task_results.values() if v == 'PASS')
+                    total = len(task_results)
+                    lines.append(f"Tasks Passed: {BOLD}{passed}/{total}{RESET}")
+                    for task, result in task_results.items():
+                        color = GREEN if result == 'PASS' else RED
+                        lines.append(f"  {BULLET} {task}: {color}{result}{RESET}")
 
                 if 'needed_training' in ar and ar['needed_training']:
                     lines.append("")
@@ -475,13 +509,18 @@ def phase_5_exercise(session_id, session_data):
     print(f"\n{GREEN}{CHECK} Exercise complete!{RESET}\n")
 
     # Generate and send exercise data
-    print(f"{CYAN}{ARROW} Sending exercise data...{RESET}")
+    print(f"{CYAN}{ARROW} Sending exercise data via /ingest...{RESET}")
     exercise_data = generate_exercise_data(exercise)
 
     try:
+        # The glove sends only device_id + data. The backend determines the phase
+        # (exercise, using the first item from needed_training) from session status.
         response = requests.post(
-            f"{API_BASE}/sessions/{session_id}/exercise",
-            json={"exercise_type": exercise, "data": exercise_data},
+            f"{API_BASE}/ingest",
+            json={
+                "device_id": DEVICE_ID,
+                "data": exercise_data
+            },
             timeout=30
         )
         response.raise_for_status()
@@ -494,24 +533,14 @@ def phase_5_exercise(session_id, session_data):
             er = results['exercise_results']
 
             lines = []
-            if 'score' in er:
-                score = er['score']
+            if 'overall_percent' in er:
+                score = er['overall_percent']
                 print_progress_bar(f"{exercise_name} Score", score)
+                lines.append(er.get('message', ''))
 
-                # Motivational message
-                if score >= 80:
-                    msg = f"{GREEN}Excellent work! Keep it up!{RESET}"
-                elif score >= 60:
-                    msg = f"{YELLOW}Good progress! Keep practicing!{RESET}"
-                else:
-                    msg = f"{BLUE}Nice effort! You'll improve!{RESET}"
-                lines.append(f"\n{msg}")
-
-            if 'reps_completed' in er:
-                lines.append(f"Reps Completed: {er['reps_completed']}")
-
-            if 'accuracy' in er:
-                lines.append(f"Accuracy: {er['accuracy']:.1f}%")
+            if 'features' in er:
+                for feat, val in er['features'].items():
+                    lines.append(f"{feat.title()}: {val:.1f}%")
 
             if lines:
                 print_box("Exercise Results", [l for l in lines if l], color=CYAN)
@@ -570,10 +599,12 @@ def phase_6_summary(session_id):
         if er:
             print(f"{BOLD}{MAGENTA}╠{'═' * 58}╣{RESET}")
             print(f"{BOLD}{MAGENTA}║{RESET} {BOLD}Exercise Results{RESET}{' ' * 41}{BOLD}{MAGENTA}║{RESET}")
-            if 'score' in er:
-                print(f"{BOLD}{MAGENTA}║{RESET}   Exercise Score: {er['score']:.1f}%")
-            if 'reps_completed' in er:
-                print(f"{BOLD}{MAGENTA}║{RESET}   Reps Completed: {er['reps_completed']}")
+            if 'exercise' in er:
+                print(f"{BOLD}{MAGENTA}║{RESET}   Exercise: {er['exercise']}")
+            if 'overall_percent' in er:
+                print(f"{BOLD}{MAGENTA}║{RESET}   Score: {float(er['overall_percent']):.1f}%")
+            if 'message' in er:
+                print(f"{BOLD}{MAGENTA}║{RESET}   {er['message']}")
 
         print(f"{BOLD}{MAGENTA}╚{'═' * 58}╝{RESET}\n")
 
@@ -599,6 +630,12 @@ def main():
     # Phase 2: Questionnaire
     if not phase_2_questionnaire(session_id):
         print(f"{RED}Demo stopped due to questionnaire error.{RESET}")
+        sys.exit(1)
+    time.sleep(1)
+
+    # Phase 2.5: Link device
+    if not phase_2b_link_device(session_id):
+        print(f"{RED}Demo stopped due to device linking error.{RESET}")
         sys.exit(1)
     time.sleep(1)
 
