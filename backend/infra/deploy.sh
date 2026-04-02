@@ -134,8 +134,7 @@ deploy_lambda() {
 }
 
 deploy_lambda "hope_session_api"
-deploy_lambda "hope_assess"
-deploy_lambda "hope_exercise"
+deploy_lambda "hope_ingest"
 
 # --- 5. API Gateway ---
 echo "[5/7] Creating API Gateway..."
@@ -242,17 +241,17 @@ add_method "$SESSION_ID_RES" "GET" "hope_session_api"
 QUEST_ID=$(get_or_create_resource "$SESSION_ID_RES" "questionnaire")
 add_method "$QUEST_ID" "PUT" "hope_session_api"
 
-# /sessions/{session_id}/assess
-ASSESS_ID=$(get_or_create_resource "$SESSION_ID_RES" "assess")
-add_method "$ASSESS_ID" "POST" "hope_assess"
-
-# /sessions/{session_id}/exercise
-EXERCISE_ID=$(get_or_create_resource "$SESSION_ID_RES" "exercise")
-add_method "$EXERCISE_ID" "POST" "hope_exercise"
-
 # /sessions/{session_id}/video-upload-url
 VIDEO_ID=$(get_or_create_resource "$SESSION_ID_RES" "video-upload-url")
 add_method "$VIDEO_ID" "POST" "hope_session_api"
+
+# /sessions/{session_id}/device
+DEVICE_RES=$(get_or_create_resource "$SESSION_ID_RES" "device")
+add_method "$DEVICE_RES" "PUT" "hope_session_api"
+
+# /ingest — the single endpoint the ESP32 glove POSTs all sensor data to
+INGEST_ID=$(get_or_create_resource "$ROOT_ID" "ingest")
+add_method "$INGEST_ID" "POST" "hope_ingest"
 
 # --- 6. Deploy to prod stage ---
 echo "[7/7] Deploying to '$STAGE' stage..."
@@ -272,9 +271,9 @@ echo ""
 echo "    API Base URL:"
 echo "    $BASE_URL"
 echo ""
-echo "    Update these two files with the URL above:"
+echo "    Update these files with the URL above:"
 echo "    1. flutter_app/lib/config.dart  →  AppConfig.apiBaseUrl"
-echo "    2. ESP32 sketch                 →  const char* serverName"
+echo "    2. storm/storm/sketch_hope2.ino →  INGEST_URL (append /ingest)"
 echo ""
 echo "    Verify:"
 echo "    curl $BASE_URL/sessions"

@@ -33,6 +33,9 @@ def handler(event, context):
     elif method == 'POST' and path == '/sessions/{session_id}/video-upload-url':
         return get_video_upload_url(path_params['session_id'])
 
+    elif method == 'PUT' and path == '/sessions/{session_id}/device':
+        return link_device(path_params['session_id'], body)
+
     elif method == 'GET' and path == '/sessions':
         return list_sessions()
 
@@ -58,7 +61,7 @@ def save_questionnaire(session_id, body):
         Key={'session_id': session_id},
         UpdateExpression='SET questionnaire = :q, #s = :s',
         ExpressionAttributeNames={'#s': 'status'},
-        ExpressionAttributeValues={':q': body.get('answers', {}), ':s': 'questionnaire_done'}
+        ExpressionAttributeValues={':q': body.get('answers', body), ':s': 'questionnaire_done'}
     )
     return respond(200, {'status': 'questionnaire_done'})
 
@@ -76,6 +79,20 @@ def get_video_upload_url(session_id):
         ExpressionAttributeValues={':k': key}
     )
     return respond(200, {'upload_url': url, 's3_key': key, 'expires_in': 600})
+
+
+def link_device(session_id, body):
+    """Link a device to this session for the /ingest endpoint."""
+    device_id = body.get('device_id')
+    if not device_id:
+        return respond(400, {'error': 'missing_device_id', 'message': 'device_id is required'})
+
+    table.update_item(
+        Key={'session_id': session_id},
+        UpdateExpression='SET device_id = :d',
+        ExpressionAttributeValues={':d': device_id}
+    )
+    return respond(200, {'status': 'device_linked', 'device_id': device_id})
 
 
 def list_sessions():
@@ -119,6 +136,7 @@ def get_session(session_id):
         'session_id': item['session_id'],
         'created_at': item['created_at'],
         'status': item.get('status', 'created'),
+        'device_id': item.get('device_id'),
         'questionnaire': item.get('questionnaire'),
         'assessment_results': item.get('assessment_results'),
         'assessment_features': item.get('assessment_features'),

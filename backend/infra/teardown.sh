@@ -1,9 +1,10 @@
 #!/bin/bash
 # teardown.sh — destroy everything
 # WARNING: The next deploy.sh will generate a new API Gateway URL.
-#          You must update the ESP32 firmware and flutter_app/lib/config.dart.
+#          You must update INGEST_URL in storm/storm/sketch_hope2.ino
+#          and flutter_app/lib/config.dart, then reflash the ESP32.
 #
-# For between-demo cleanup, use cleanup.sh instead.
+# For between-demo cleanup without destroying infra, use cleanup.sh instead.
 
 set -e
 
@@ -39,7 +40,7 @@ aws dynamodb delete-table --table-name "$TABLE" --region "$REGION" > /dev/null 2
 
 # --- 3. Delete Lambda functions ---
 echo "[3/5] Deleting Lambda functions..."
-for FN in hope_session_api hope_assess hope_exercise; do
+for FN in hope_session_api hope_ingest; do
   aws lambda delete-function --function-name "$FN" --region "$REGION" 2>/dev/null \
     && echo "    Deleted: $FN" || echo "    Not found: $FN (skipping)"
 done
@@ -72,7 +73,6 @@ rm -f "$SCRIPT_DIR/.api_url"
 echo ""
 echo "==> Teardown complete. All resources deleted."
 echo ""
-echo "    Next steps after running deploy.sh:"
+echo "    After running deploy.sh next time:"
 echo "    1. flutter_app/lib/config.dart  →  update AppConfig.apiBaseUrl"
-echo "    2. ESP32 sketch                 →  update const char* serverName"
-echo "    3. Reflash ESP32 with new URL"
+echo "    2. storm/storm/sketch_hope2.ino →  update INGEST_URL (append /ingest), then reflash"
