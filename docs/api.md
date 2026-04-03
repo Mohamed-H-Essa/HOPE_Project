@@ -1,6 +1,6 @@
 # HOPE — API Contract
 
-Base URL: `https://<api-gateway-id>.execute-api.eu-west-3.amazonaws.com/prod`
+Base URL: `https://<api-gateway-id>.execute-api.us-east-1.amazonaws.com/prod`
 
 Defined in `flutter_app/lib/config.dart` as a single constant.
 
@@ -57,41 +57,76 @@ PUT /sessions/{session_id}/questionnaire
 
 ---
 
-## 3. Submit Assessment Sensor Data
+## 3. Link Device to Session
 
-**Called by:** ESP32 (not the Flutter app)
+**Called by:** Flutter app (before glove starts sending data)
 
 ```
-POST /sessions/{session_id}/assess
+PUT /sessions/{session_id}/device
 ```
 
-**Request body:** Raw sensor array (collected over ~5-10 seconds)
+**Request body:**
 ```json
-[
-  {
-    "time": 1000,
-    "flex1": 45, "flex2": 38,
-    "fsr1": 62, "fsr2": 55,
-    "emg": 340,
-    "ax": 1024, "ay": -512, "az": 16384,
-    "gx": 100, "gy": -50, "gz": 30
-  },
-  { ... },
-  ...
-]
+{
+  "device_id": "hope-glove-01"
+}
 ```
 
 **Response 200:**
 ```json
 {
+  "status": "device_linked",
+  "device_id": "hope-glove-01"
+}
+```
+
+This tells the backend which session the glove's data belongs to. The glove itself only knows its own `device_id` — it never learns about session IDs.
+
+---
+
+## 4. Ingest Sensor Data (unified endpoint)
+
+**Called by:** ESP32 glove (continuously, every ~10 seconds)
+
+```
+POST /ingest
+```
+
+**Request body:**
+```json
+{
+  "device_id": "hope-glove-01",
+  "data": [
+    {
+      "time": 1000,
+      "flex1": 45, "flex2": 38,
+      "fsr1": 62, "fsr2": 55,
+      "emg": 340,
+      "ax": 1024, "ay": -512, "az": 16384,
+      "gx": 100, "gy": -50, "gz": 30
+    },
+    ...
+  ]
+}
+```
+
+The glove is a dumb data pipe — it sends only `device_id` and raw sensor samples. It has **no knowledge** of sessions, modes, or exercise names.
+
+The backend auto-detects the phase from the linked session's status:
+- `status == 'assessed'` → runs exercise logic (exercise name from `assessment_results.needed_training[0]`)
+- anything else → runs assessment logic
+
+**Response 200 (assessment):**
+```json
+{
   "session_id": "550e8400-...",
   "assessment_results": {
-    "Reach": "PASS",
-    "Grasp": "FAIL",
-    "Manipulation": "PASS",
-    "Release": "FAIL",
-    "needed_training": ["Grasp", "Release"]
+    "Reach": true,
+    "Grasp": false,
+    "Manipulation": true,
+    "Release": false
   },
+  "needed_training": ["Grasp", "Release"],
   "features": {
     "speed": 2.14,
     "rom": 67.3,
@@ -105,37 +140,7 @@ POST /sessions/{session_id}/assess
 }
 ```
 
----
-
-## 4. Submit Exercise Sensor Data
-
-**Called by:** ESP32 (not the Flutter app)
-
-```
-POST /sessions/{session_id}/exercise
-```
-
-**Request body:**
-```json
-{
-  "data": [
-    {
-      "time": 1000,
-      "flex1": 45, "flex2": 38,
-      "fsr1": 62, "fsr2": 55,
-      "emg": 340,
-      "ax": 1024, "ay": -512, "az": 16384,
-      "gx": 100, "gy": -50, "gz": 30
-    },
-    { ... }
-  ],
-  "exercise": "Grasp"
-}
-```
-
-Valid `exercise` values: `"Reach"`, `"Grasp"`, `"Manipulation"`, `"Release"`
-
-**Response 200:**
+**Response 200 (exercise):**
 ```json
 {
   "session_id": "550e8400-...",
@@ -153,11 +158,13 @@ Valid `exercise` values: `"Reach"`, `"Grasp"`, `"Manipulation"`, `"Release"`
 }
 ```
 
+**Response 404:** No active session linked to this device.
+
 ---
 
 ## 5. Get Video Upload URL
 
-**Called by:** Flutter app (Step 5, optional — only if patient recorded video)
+**Called by:** Flutter app (optional — only if patient recorded video)
 
 ```
 POST /sessions/{session_id}/video-upload-url
@@ -196,12 +203,11 @@ GET /sessions
       "status": "exercised",
       "assessment_summary": {
         "passed": 2,
-        "failed": 2,
+        "total": 4,
         "needed_training": ["Grasp", "Release"]
       },
       "exercise_overall_percent": 70.2
-    },
-    { ... }
+    }
   ]
 }
 ```
@@ -222,6 +228,7 @@ GET /sessions/{session_id}
   "session_id": "550e8400-...",
   "created_at": "2026-04-01T10:00:00Z",
   "status": "exercised",
+  "device_id": "hope-glove-01",
   "questionnaire": {
     "pain_level": 4,
     "stiffness": true,
@@ -235,13 +242,13 @@ GET /sessions/{session_id}
     "needed_training": ["Grasp", "Release"]
   },
   "assessment_features": {
-    "speed": 2.14,
-    "rom": 67.3,
-    "trajectory": 0.88,
-    "deviation": 1450.2,
-    "flex": 41.5,
-    "force": 58.9,
-    "emg": 312.7
+    "speed": "2.14",
+    "rom": "67.3",
+    "trajectory": "0.88",
+    "deviation": "1450.2",
+    "flex": "41.5",
+    "force": "58.9",
+    "emg": "312.7"
   },
   "exercise_results": {
     "exercise": "Grasp",
@@ -277,5 +284,5 @@ All errors follow the same shape:
 
 Common HTTP status codes:
 - `400` — bad request (missing required fields)
-- `404` — session not found
+- `404` — session not found / no active session for device
 - `500` — internal server error (Lambda exception)

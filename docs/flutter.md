@@ -71,7 +71,7 @@ dev_dependencies:
 ```dart
 class AppConfig {
   static const String apiBaseUrl =
-      'https://<api-gateway-id>.execute-api.eu-west-3.amazonaws.com/prod';
+      'https://<api-gateway-id>.execute-api.us-east-1.amazonaws.com/prod';
 }
 ```
 

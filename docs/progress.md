@@ -6,19 +6,12 @@
 
 | Resource | Name | Region |
 |----------|------|--------|
-| API Gateway | `hope-api` | eu-west-3 |
-| Lambda | `hope_session_api` | eu-west-3 |
-| Lambda | `hope_assess` | eu-west-3 |
-| Lambda | `hope_exercise` | eu-west-3 |
-| DynamoDB | `hope-sessions` | eu-west-3 |
-| S3 | `hope-data-321209672840` | eu-west-3 |
+| API Gateway | `hope-api` | us-east-1 |
+| Lambda | `hope_session_api` | us-east-1 |
+| Lambda | `hope_ingest` | us-east-1 |
+| DynamoDB | `hope-sessions` | us-east-1 |
+| S3 | `hope-data-{account-id}` | us-east-1 |
 | IAM Role | `hope-lambda-role` | — |
-
-### API Base URL (permanent)
-
-```
-https://wsrk7wste5.execute-api.eu-west-3.amazonaws.com/prod
-```
 
 ### Endpoints (all verified working)
 
@@ -28,19 +21,15 @@ https://wsrk7wste5.execute-api.eu-west-3.amazonaws.com/prod
 | GET | `/sessions` | hope_session_api |
 | GET | `/sessions/{session_id}` | hope_session_api |
 | PUT | `/sessions/{session_id}/questionnaire` | hope_session_api |
-| POST | `/sessions/{session_id}/assess` | hope_assess |
-| POST | `/sessions/{session_id}/exercise` | hope_exercise |
+| PUT | `/sessions/{session_id}/device` | hope_session_api |
 | POST | `/sessions/{session_id}/video-upload-url` | hope_session_api |
+| POST | `/ingest` | hope_ingest |
 
-### Test results
+### Architecture changes (2026-04-02)
 
-- **Unit tests:** 71/71 passed (moto mocks, no AWS credentials needed)
-- **Smoke tests:** All 7 endpoints return expected JSON against live AWS
-
-### Bugs fixed during deploy
-
-1. **Lambda race condition:** `deploy.sh` called `update-function-configuration` immediately after `create-function` / `update-function-code`, before the Lambda was ready. Fixed by adding a stabilization wait loop.
-2. **Env var mismatch:** Deploy script set `BUCKET=...` but handlers read `HOPE_BUCKET`. Fixed deploy script to set `HOPE_BUCKET`.
+- **Unified ingest endpoint:** Replaced separate `hope_assess` and `hope_exercise` lambdas with a single `hope_ingest` lambda. The backend auto-detects assess vs exercise from the session's status.
+- **Dumb glove design:** ESP32 firmware (`firmware/hope_glove/hope_glove.ino`) sends only `device_id` + raw sensor data. No knowledge of sessions, modes, or exercise names.
+- **Device linking:** Added `PUT /sessions/{id}/device` to bind a device to a session. The `/ingest` endpoint uses this to find the correct session.
 
 ### URL stability
 
@@ -51,17 +40,13 @@ The API URL **does not change** between these operations:
 
 The URL **will change** if you run `teardown.sh` (destroys API Gateway).
 
-**For ESP32:** Flash once with the URL above. Between demo sessions, run `cleanup.sh` to reset data. Never run `teardown.sh`.
-
-### Cost
-
-At demo scale (a few sessions): ~$0/month. DynamoDB and Lambda are pay-per-request. S3 storage is negligible.
+**For ESP32:** Flash once with the URL. Between demo sessions, run `cleanup.sh` to reset data. Never run `teardown.sh`.
 
 ### Quick reference
 
 ```bash
 # Deploy (or update) backend
-REGION=eu-west-3 ./backend/infra/deploy.sh
+REGION=us-east-1 ./backend/infra/deploy.sh
 
 # Reset data between demos (URL survives)
 ./backend/infra/cleanup.sh
