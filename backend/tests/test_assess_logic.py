@@ -4,7 +4,7 @@ import sys
 import os
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../lambdas/hope_assess'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../lambdas/hope_ingest'))
 from assess_logic import apply_filters, assess_session
 
 

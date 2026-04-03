@@ -1,7 +1,7 @@
 #!/bin/bash
 # teardown.sh — destroy everything
 # WARNING: The next deploy.sh will generate a new API Gateway URL.
-#          You must update INGEST_URL in storm/storm/sketch_hope2.ino
+#          You must update INGEST_URL in firmware/hope_glove/hope_glove.ino
 #          and flutter_app/lib/config.dart, then reflash the ESP32.
 #
 # For between-demo cleanup without destroying infra, use cleanup.sh instead.
@@ -75,4 +75,4 @@ echo "==> Teardown complete. All resources deleted."
 echo ""
 echo "    After running deploy.sh next time:"
 echo "    1. flutter_app/lib/config.dart  →  update AppConfig.apiBaseUrl"
-echo "    2. storm/storm/sketch_hope2.ino →  update INGEST_URL (append /ingest), then reflash"
+echo "    2. firmware/hope_glove/hope_glove.ino →  update INGEST_URL (append /ingest), then reflash"

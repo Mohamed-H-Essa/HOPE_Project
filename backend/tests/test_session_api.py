@@ -13,7 +13,7 @@ BUCKET_NAME = 'hope-data-test'
 
 
 def set_aws_env():
-    os.environ['AWS_DEFAULT_REGION'] = 'eu-west-3'
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
     os.environ['AWS_ACCESS_KEY_ID'] = 'test'
     os.environ['AWS_SECRET_ACCESS_KEY'] = 'test'
     os.environ['HOPE_BUCKET'] = BUCKET_NAME
@@ -30,18 +30,15 @@ def load_handler():
 def aws_setup():
     with mock_aws():
         set_aws_env()
-        ddb = boto3.resource('dynamodb', region_name='eu-west-3')
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
         ddb.create_table(
             TableName=TABLE_NAME,
             KeySchema=[{'AttributeName': 'session_id', 'KeyType': 'HASH'}],
             AttributeDefinitions=[{'AttributeName': 'session_id', 'AttributeType': 'S'}],
             BillingMode='PAY_PER_REQUEST'
         )
-        s3 = boto3.client('s3', region_name='eu-west-3')
-        s3.create_bucket(
-            Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={'LocationConstraint': 'eu-west-3'}
-        )
+        s3 = boto3.client('s3', region_name='us-east-1')
+        s3.create_bucket(Bucket=BUCKET_NAME)
         yield load_handler()
 
 

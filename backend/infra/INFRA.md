@@ -15,7 +15,7 @@ This stack is essentially free at demo scale.
 | Service | Cost at rest | Cost per demo session |
 |---------|-------------|----------------------|
 | API Gateway REST | **$0** (pay per request) | ~$0.00001 |
-| Lambda (3 functions) | **$0** (1M free req/month) | **$0** |
+| Lambda (2 functions) | **$0** (1M free req/month) | **$0** |
 | DynamoDB on-demand | **$0** (pay per write) | ~$0.00001 |
 | CloudWatch Logs | **$0** (5 GB free) | **$0** |
 | S3 storage | ~$0.001/month per 40 MB of video | ~$0.001 per video |
@@ -36,7 +36,7 @@ If you **destroy and recreate** API Gateway, you get a new random ID and the ESP
 **Solution: never destroy API Gateway.** It costs $0 at rest. Only wipe data between demos.
 
 If you ever do need a full teardown + redeploy (e.g., switching regions), you must:
-1. Update `serverName` in the ESP32 sketch and reflash the board
+1. Update `INGEST_URL` in `firmware/hope_glove/hope_glove.ino` and reflash the ESP32
 2. Update `AppConfig.apiBaseUrl` in `flutter_app/lib/config.dart`
 
 ---
@@ -62,11 +62,11 @@ What it costs to leave running after cleanup: $0.
 What it does:
 - Deletes all S3 objects, then deletes the bucket
 - Deletes DynamoDB table
-- Deletes all 3 Lambda functions
+- Deletes both Lambda functions (`hope_session_api`, `hope_ingest`)
 - Deletes API Gateway REST API
 - Deletes IAM role + policies
 
-What breaks: **URL changes on next deploy. ESP32 firmware must be updated.**
+What breaks: **URL changes on next deploy. ESP32 firmware must be reflashed.**
 
 ```bash
 ./backend/infra/teardown.sh
@@ -77,9 +77,9 @@ What breaks: **URL changes on next deploy. ESP32 firmware must be updated.**
 What it does:
 - Creates IAM role
 - Creates DynamoDB table
-- Creates S3 bucket
-- Packages and deploys all 3 Lambda functions
-- Creates API Gateway with all 7 routes
+- Creates S3 bucket (with CORS for video uploads)
+- Packages and deploys both Lambda functions
+- Creates API Gateway with all routes
 - Deploys to `prod` stage
 - Prints the new base URL
 
@@ -87,14 +87,16 @@ What it does:
 REGION=us-east-1 ./backend/infra/deploy.sh
 ```
 
-After a fresh deploy, update `AppConfig.apiBaseUrl` in `flutter_app/lib/config.dart` with the printed URL.
+After a fresh deploy, update:
+1. `firmware/hope_glove/hope_glove.ino` → `INGEST_URL` (base URL + `/ingest`)
+2. `flutter_app/lib/config.dart` → `AppConfig.apiBaseUrl`
 
 ---
 
 ## After Cleanup — Verify Nothing Is Broken
 
 ```bash
-BASE="https://<your-api-id>.execute-api.<region>.amazonaws.com/prod"
+BASE="https://<your-api-id>.execute-api.us-east-1.amazonaws.com/prod"
 curl -s "$BASE/sessions" | python3 -m json.tool
 # Expected: {"sessions": []}
 ```
@@ -103,13 +105,13 @@ curl -s "$BASE/sessions" | python3 -m json.tool
 
 ## After Full Teardown + Redeploy — Update These Two Places
 
-1. **ESP32 firmware** (`storm/storm/sketch_hope2.ino`):
+1. **ESP32 firmware** (`firmware/hope_glove/hope_glove.ino`):
    ```cpp
-   const char* serverName = "https://<new-api-id>.execute-api.<region>.amazonaws.com/prod";
+   const char* INGEST_URL = "https://<new-api-id>.execute-api.us-east-1.amazonaws.com/prod/ingest";
    ```
 
 2. **Flutter app** (`flutter_app/lib/config.dart`):
    ```dart
    static const String apiBaseUrl =
-       'https://<new-api-id>.execute-api.<region>.amazonaws.com/prod';
+       'https://<new-api-id>.execute-api.us-east-1.amazonaws.com/prod';
    ```

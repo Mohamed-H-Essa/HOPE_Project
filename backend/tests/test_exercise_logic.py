@@ -4,7 +4,7 @@ import sys
 import os
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../lambdas/hope_exercise'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../lambdas/hope_ingest'))
 from exercise_logic import run_exercise
 
 
