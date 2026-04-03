@@ -36,6 +36,10 @@ dependencies:
   camera: ^0.11.2+1
   video_player: ^2.9.3
   intl: ^0.20.2
+  talker: ^4.4.0
+  talker_flutter: ^4.4.0
+  device_info_plus: ^11.2.0
+  package_info_plus: ^8.1.0
 
 dev_dependencies:
   flutter_test:
