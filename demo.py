@@ -16,7 +16,7 @@ API_URL_FILE = Path(__file__).parent / "backend" / "infra" / ".api_url"
 try:
     API_BASE = API_URL_FILE.read_text().strip()
 except FileNotFoundError:
-    API_BASE = "https://wsrk7wste5.execute-api.eu-west-3.amazonaws.com/prod"
+    API_BASE = "https://unj4s6yf6b.execute-api.us-east-1.amazonaws.com/prod"
 
 # ANSI Color Codes
 RESET = "\033[0m"
