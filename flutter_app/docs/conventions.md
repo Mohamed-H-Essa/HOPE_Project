@@ -1,5 +1,11 @@
 # HOPE Flutter App — Coding Conventions
 
+## Architecture Ground Rules
+
+- **No Bluetooth.** The glove talks to the backend over WiFi. The app talks to the backend over HTTP. The app and glove never communicate directly.
+- **App does NOT call `/ingest`.** That's the glove's endpoint. The app only does CRUD + polling on `/sessions`.
+- **Device linking is a database write**, not a hardware pairing. `PUT /sessions/{id}/device` just stores a `device_id` string so the backend knows which session to route glove data to.
+
 ## File & Naming Conventions
 
 - **File naming**: `snake_case.dart` — one primary class per file
@@ -15,19 +21,6 @@ Organize imports in this order, alphabetically within each section:
 2. `package:flutter/` imports
 3. `package:` third-party imports (alphabetical)
 4. Relative imports (alphabetical)
-
-Example:
-```dart
-import 'dart:async';
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-
-import '../models/session.dart';
-import '../services/api_service.dart';
-```
 
 ## State Management
 
@@ -47,7 +40,6 @@ import '../services/api_service.dart';
 
 - **Screens**: Thin widgets that read state and call provider methods
 - **Reusable widgets**: Pure stateless widgets in `lib/widgets/`
-- Avoid inline widget definitions unless trivial
 
 ## Navigation
 

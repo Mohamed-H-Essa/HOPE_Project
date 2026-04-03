@@ -6,6 +6,14 @@
 https://unj4s6yf6b.execute-api.us-east-1.amazonaws.com/prod
 ```
 
+## Key Concept: App vs Glove
+
+The app and the glove talk to the SAME backend but use DIFFERENT endpoints:
+
+- **App calls:** `/sessions` (CRUD), `/sessions/{id}` (polling), `/sessions/{id}/device`, etc.
+- **Glove calls:** `/ingest` (sensor data batches over WiFi)
+- **They never talk to each other.** The backend links them via `device_id`.
+
 ## Endpoints Used by App
 
 ### POST /sessions
@@ -37,11 +45,13 @@ Submit questionnaire answers.
 }
 ```
 
-**Response** (200): Empty
+**Response** (200): `{"status": "questionnaire_done"}`
 
 ### PUT /sessions/{id}/device
 
-Link a glove device to the session.
+Link a device_id to the session. This is NOT a Bluetooth pairing — it's just
+writing a string to the database so the backend knows which session to route
+the glove's sensor data to.
 
 **Request**:
 ```json
@@ -50,18 +60,19 @@ Link a glove device to the session.
 }
 ```
 
-**Response** (200): Empty
+**Response** (200): `{"status": "...", "device_id": "hope-glove-01"}`
 
 ### GET /sessions/{id}
 
-Get full session details.
+Get full session details. The app polls this endpoint every 3s to detect when
+the glove's data has been processed.
 
 **Response** (200):
 ```json
 {
   "session_id": "uuid-string",
   "created_at": "2026-04-03 14:30:00",
-  "status": "completed",
+  "status": "assessed",
   "device_id": "hope-glove-01",
   "questionnaire": {
     "pain_level": 5,
@@ -77,8 +88,13 @@ Get full session details.
     "needed_training": ["Grasp", "Release"]
   },
   "assessment_features": {
-    "reach_range": "85.2",
-    "grasp_force": "42.1"
+    "speed": "2.14",
+    "rom": "67.3",
+    "trajectory": "0.88",
+    "deviation": "1450.2",
+    "flex": "41.5",
+    "force": "58.9",
+    "emg": "312.7"
   },
   "exercise_results": {
     "exercise": "Grasp",
@@ -87,16 +103,20 @@ Get full session details.
       "flex": 68.0
     },
     "overall_percent": 70.2,
-    "message": "Good work! Keep practicing.",
+    "message": "Good work! You're improving",
     "timestamp": "2026-04-03 14:45:32"
   },
-  "video_url": "https://presigned-s3-url..."
+  "video_url": "https://presigned-s3-get-url..."
 }
 ```
 
+Fields appear incrementally as the session progresses. `assessment_results` is
+null until the glove sends assessment data. `exercise_results` is null until
+the glove sends exercise data.
+
 ### GET /sessions
 
-List all sessions (for practitioner).
+List all sessions (for practitioner view).
 
 **Response** (200):
 ```json
@@ -105,7 +125,7 @@ List all sessions (for practitioner).
     {
       "session_id": "uuid-string",
       "created_at": "2026-04-03 14:30:00",
-      "status": "completed",
+      "status": "exercised",
       "assessment_summary": {
         "passed": 2,
         "total": 4,
@@ -117,14 +137,16 @@ List all sessions (for practitioner).
 }
 ```
 
-### GET /sessions/{id}/video-upload-url
+### POST /sessions/{id}/video-upload-url
 
-Get a presigned S3 URL for video upload.
+Get a presigned S3 URL for video upload (10-minute expiry).
 
 **Response** (200):
 ```json
 {
-  "upload_url": "https://bucket.s3.amazonaws.com/videos/uuid.mp4?..."
+  "upload_url": "https://bucket.s3.amazonaws.com/videos/uuid/video.mp4?...",
+  "s3_key": "videos/uuid/video.mp4",
+  "expires_in": 600
 }
 ```
 
@@ -132,17 +154,29 @@ Get a presigned S3 URL for video upload.
 
 ### POST /ingest
 
-The ESP32 glove sends sensor data here. The app never calls this endpoint.
+The ESP32 glove sends raw sensor batches here over WiFi. The app NEVER calls this.
 
-## Status Values
+```json
+{
+  "device_id": "hope-glove-01",
+  "data": [
+    {"time": 0, "flex1": 45, "flex2": 38, "fsr1": 62, "fsr2": 55, "emg": 340,
+     "ax": 1024, "ay": -512, "az": 16384, "gx": 100, "gy": -50, "gz": 30},
+    ... (99 more samples)
+  ]
+}
+```
 
-- `created` — Session just created
-- `in_progress` — Device linked, assessment pending
-- `assessment_done` — Assessment complete, exercise pending
-- `completed` — Exercise complete
+## Status Values (Actual Backend Values)
+
+- `created` — Session exists, nothing submitted yet
+- `questionnaire_done` — Patient questionnaire saved
+- `assessed` — Glove sent assessment data, results computed
+- `exercised` — Glove sent exercise data, results computed
+
+Note: Device linking does NOT change the status value. It only sets `device_id`.
 
 ## Presigned URL Mechanics
 
-- **Upload**: `PUT` to presigned URL with `Content-Type: video/mp4`
-- **Download**: `video_url` in session response is already a presigned GET URL
-- **Expiry**: URLs expire after a set time (configured in backend)
+- **Upload**: `PUT` to presigned URL with `Content-Type: video/mp4` (10-min expiry)
+- **Download**: `video_url` in GET /sessions/{id} response is a presigned GET URL (1-hour expiry)
