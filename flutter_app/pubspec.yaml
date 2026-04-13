@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
   provider: ^6.1.5
   http: ^1.6.0
@@ -40,6 +42,7 @@ dependencies:
   talker_flutter: ^4.4.0
   device_info_plus: ^11.2.0
   package_info_plus: ^8.1.0
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +81,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
 
   assets:
     - assets/logo.png
