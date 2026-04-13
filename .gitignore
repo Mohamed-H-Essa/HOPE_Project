@@ -302,3 +302,10 @@ kubeconfig
 site/
 _site/
 docs/_build/
+
+# ===========================================
+# RAW / WORKING SOURCE ASSETS
+# ===========================================
+# Questionnaire source files (docx, zips, extracted dirs) — processed images
+# live in flutter_app/assets/questionnaire/ and are committed.
+flutter_app/questionair/

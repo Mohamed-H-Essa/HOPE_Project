@@ -163,7 +163,8 @@ def generate_sensor_sample(base_values=None, sample_index=0):
             noise = random.uniform(-200, 200)
             sample[key] = int(base + noise)
         else:  # gyroscope
-            # Gyroscope: ±500 range
+            # Gyroscope: raw MPU6050 int16 LSB at ±250°/s (131 LSB per °/s).
+            # See firmware/FIRMWARE.md#sensors for the canonical schema.
             noise = random.uniform(-30, 30)
             sample[key] = int(base + noise)
 
