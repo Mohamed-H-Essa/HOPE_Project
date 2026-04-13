@@ -154,6 +154,32 @@ class TestQuestionnaire:
         body = json.loads(get_resp['body'])
         assert body['status'] == 'questionnaire_done'
 
+    def test_put_questionnaire_accepts_raw_shape_from_app(self, aws_setup):
+        # The Flutter app sends the 4 answer fields at the top level, not
+        # wrapped in {"answers": ...}. The backend supports both shapes via
+        # `body.get('answers', body)` — this test pins the raw shape.
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+
+        raw_body = {
+            'pain_level': 5,
+            'stiffness': False,
+            'comments': 'Feeling okay today',
+            'goal': 'improve_grip',
+        }
+        resp = aws_setup.handler(apigw_event(
+            'PUT', '/sessions/{session_id}/questionnaire',
+            path_params={'session_id': session_id},
+            body=raw_body,
+        ), None)
+        assert resp['statusCode'] == 200
+
+        get_resp = aws_setup.handler(apigw_event('GET', '/sessions/{session_id}',
+                                                 path_params={'session_id': session_id}), None)
+        got = json.loads(get_resp['body'])
+        assert got['status'] == 'questionnaire_done'
+        assert got['questionnaire'] == raw_body
+
 
 class TestVideoUploadUrl:
     def test_post_video_upload_url_returns_200(self, aws_setup):
