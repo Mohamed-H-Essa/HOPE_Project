@@ -309,3 +309,4 @@ docs/_build/
 # Questionnaire source files (docx, zips, extracted dirs) — processed images
 # live in flutter_app/assets/questionnaire/ and are committed.
 flutter_app/questionair/
+flutter_app/project_prompt.md
