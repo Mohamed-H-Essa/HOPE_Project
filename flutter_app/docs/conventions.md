@@ -72,6 +72,13 @@ void dispose() {
 }
 ```
 
+## Localization
+
+- All user-facing strings go through `AppLocalizations` — no hardcoded literals in widgets.
+- Add new keys to both `lib/l10n/app_en.arb` and `lib/l10n/app_ar.arb`; run `flutter gen-l10n`.
+- Use `EdgeInsetsDirectional`, `AlignmentDirectional`, `Positioned.directional` so layouts mirror under Arabic (RTL).
+- See [`localization.md`](localization.md) for full details.
+
 ## Color Usage
 
 - Primary: `Colors.teal` (brand color)
