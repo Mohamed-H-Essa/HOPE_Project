@@ -2,9 +2,10 @@
 
 ## TL;DR
 
+**Check state:** run `audit.sh` — read-only inventory, flags orphans, reports cost. Exit 0 = clean.
 **Between demos:** run `cleanup.sh` — wipes data, keeps infra alive, costs nothing, URL unchanged.
 **Done forever:** run `teardown.sh` — destroys everything (URL will change on next deploy).
-**Fresh deploy:** run `deploy.sh` — builds everything from scratch, prints new URL.
+**Fresh deploy:** run `deploy.sh` — builds everything from scratch, prints new URL and smoke-tests.
 
 ---
 
@@ -77,11 +78,12 @@ What breaks: **URL changes on next deploy. ESP32 firmware must be reflashed.**
 What it does:
 - Creates IAM role
 - Creates DynamoDB table
-- Creates S3 bucket (with CORS for video uploads)
+- Creates S3 bucket (with CORS for video uploads) — **see S3 Bucket Region note below**
 - Packages and deploys both Lambda functions
 - Creates API Gateway with all routes
 - Deploys to `prod` stage
 - Prints the new base URL
+- Smoke-tests `GET /sessions` and warns on non-200
 
 ```bash
 REGION=us-east-1 ./backend/infra/deploy.sh
@@ -90,6 +92,41 @@ REGION=us-east-1 ./backend/infra/deploy.sh
 After a fresh deploy, update:
 1. `firmware/hope_glove/hope_glove.ino` → `INGEST_URL` (base URL + `/ingest`)
 2. `flutter_app/lib/config.dart` → `AppConfig.apiBaseUrl`
+
+### `audit.sh` — read-only inventory + orphan detector
+
+What it does:
+- Lists every `hope*` resource and compares to the canonical set defined in `deploy.sh`
+- Flags orphans (anything live that isn't in the canonical set) with the exact delete command
+- Shows DynamoDB item count, S3 bucket region + object count, IAM role, log groups
+- Reports cost for the last 7 days by service
+- Exit code 0 = clean, 1 = orphans found
+
+```bash
+./backend/infra/audit.sh                # audit primary region only
+ALL_REGIONS=1 ./backend/infra/audit.sh  # also scan other common AWS regions
+```
+
+## S3 Bucket Region (known exception)
+
+Everything lives in `us-east-1` **except** the S3 bucket `hope-data-321209672840`, which is in `eu-west-3` (Paris). It was created out-of-band before the first infra deploy and we've kept it there intentionally — the cross-region hop from the us-east-1 Lambdas adds ~100-150 ms per S3 PUT/GET and a tiny data-transfer cost, both negligible at current scale.
+
+`audit.sh` knows about this and prints an informational NOTE rather than flagging it as an orphan. `deploy.sh` does not re-create this bucket (it only runs `create-bucket` if the bucket doesn't exist yet), so re-running it is safe.
+
+If you ever do want to collapse to a single region, the migration is straightforward:
+
+```bash
+# 1. Sync objects to a new us-east-1 bucket
+aws s3 sync s3://hope-data-321209672840 s3://hope-data-321209672840-new \
+  --source-region eu-west-3 --region us-east-1
+
+# 2. Swap bucket names (rename the new bucket by syncing one more time into a bucket
+#    with the canonical name created via deploy.sh after deleting the Paris one)
+
+# 3. Restart the Lambdas so the updated HOPE_BUCKET env var takes effect
+```
+
+Not on any roadmap — only listed here so the inconsistency is explainable when someone inevitably asks.
 
 ---
 

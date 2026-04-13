@@ -10,7 +10,7 @@
 | Lambda | `hope_session_api` | us-east-1 |
 | Lambda | `hope_ingest` | us-east-1 |
 | DynamoDB | `hope-sessions` | us-east-1 |
-| S3 | `hope-data-{account-id}` | us-east-1 |
+| S3 | `hope-data-{account-id}` | eu-west-3 *(intentional exception — see [INFRA.md § S3 Bucket Region](../backend/infra/INFRA.md#s3-bucket-region))* |
 | IAM Role | `hope-lambda-role` | — |
 
 ### Endpoints (all verified working)
@@ -30,6 +30,16 @@
 - **Unified ingest endpoint:** Replaced separate `hope_assess` and `hope_exercise` lambdas with a single `hope_ingest` lambda. The backend auto-detects assess vs exercise from the session's status.
 - **Dumb glove design:** ESP32 firmware (`firmware/hope_glove/hope_glove.ino`) sends only `device_id` + raw sensor data. No knowledge of sessions, modes, or exercise names.
 - **Device linking:** Added `PUT /sessions/{id}/device` to bind a device to a session. The `/ingest` endpoint uses this to find the correct session.
+
+### Orphan cleanup (2026-04-13)
+
+The initial refactor on 2026-04-02 switched Lambda targets for `/ingest` but left the old Lambdas and their unused routes behind. Audited and removed:
+
+- Deleted Lambda `hope_assess` and its CloudWatch log group
+- Deleted Lambda `hope_exercise` and its CloudWatch log group
+- Deleted API Gateway routes `POST /sessions/{session_id}/assess` and `POST /sessions/{session_id}/exercise` from `hope-api`, redeployed `prod` stage
+
+Live infra (API `unj4s6yf6b`) and all 5 historical sessions were preserved. A new `backend/infra/audit.sh` script codifies the canonical resource set so future drift is easy to detect.
 
 ### URL stability
 

@@ -95,9 +95,6 @@ deploy_lambda() {
   zip -q "$ZIP" *.py
   cd - > /dev/null
 
-  # Update bucket name placeholder in handler
-  sed -i.bak "s/hope-data-{account-id}/${BUCKET}/g" "${DIR}/handler.py" 2>/dev/null || true
-
   if aws lambda get-function --function-name "$NAME" --region "$REGION" > /dev/null 2>&1; then
     aws lambda update-function-code \
       --function-name "$NAME" \
@@ -275,5 +272,12 @@ echo "    Update these files with the URL above:"
 echo "    1. flutter_app/lib/config.dart  →  AppConfig.apiBaseUrl"
 echo "    2. firmware/hope_glove/hope_glove.ino →  INGEST_URL (append /ingest), then reflash ESP32"
 echo ""
-echo "    Verify:"
-echo "    curl $BASE_URL/sessions"
+echo "    Verifying deploy..."
+CODE=$(curl -sS -o /tmp/hope_deploy_check.txt -w '%{http_code}' "$BASE_URL/sessions" --max-time 30 || echo "000")
+if [ "$CODE" = "200" ]; then
+  echo "    OK — GET $BASE_URL/sessions returned 200."
+else
+  echo "    WARN — GET $BASE_URL/sessions returned HTTP $CODE (first Lambda cold-start can take up to 15s; retry in a moment)."
+  echo "    Response: $(head -c 200 /tmp/hope_deploy_check.txt)"
+fi
+rm -f /tmp/hope_deploy_check.txt
