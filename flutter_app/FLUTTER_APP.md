@@ -10,7 +10,7 @@ Mobile companion for the HOPE rehabilitation glove. Two modes:
 ## What This App Does NOT Do
 
 - **Does NOT connect to the glove.** There is no Bluetooth. The glove connects to the backend over WiFi independently.
-- **Does NOT call `/ingest`.** That endpoint is for the glove only. The app calls `/sessions` endpoints.
+- **Does NOT call `/ingest` in the normal patient flow.** The debug "Simulate Glove" button is the only exception — it mimics the glove during development. In a real deployment the glove handles all `/ingest` traffic.
 - **Does NOT process sensor data.** All assessment/exercise logic runs server-side in Lambda.
 
 ## How It Works

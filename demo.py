@@ -294,7 +294,7 @@ def phase_1_create_session():
     time.sleep(0.5)
 
     try:
-        response = requests.post(f"{API_BASE}/sessions", timeout=10)
+        response = requests.post(f"{API_BASE}/sessions", timeout=30)
         response.raise_for_status()
         session = response.json()
 
@@ -334,7 +334,7 @@ def phase_2_questionnaire(session_id):
         response = requests.put(
             f"{API_BASE}/sessions/{session_id}/questionnaire",
             json=questionnaire,
-            timeout=10
+            timeout=30
         )
         response.raise_for_status()
         print(f"{GREEN}{CHECK} Questionnaire submitted successfully!{RESET}")
@@ -357,7 +357,7 @@ def phase_2b_link_device(session_id):
         response = requests.put(
             f"{API_BASE}/sessions/{session_id}/device",
             json={"device_id": DEVICE_ID},
-            timeout=10
+            timeout=30
         )
         response.raise_for_status()
         result = response.json()
@@ -440,7 +440,7 @@ def phase_4_poll_results(session_id):
         spinner(f"Polling server (attempt {i}/{max_polls})", duration=2.5)
 
         try:
-            response = requests.get(f"{API_BASE}/sessions/{session_id}", timeout=10)
+            response = requests.get(f"{API_BASE}/sessions/{session_id}", timeout=30)
             response.raise_for_status()
             session = response.json()
 
@@ -512,43 +512,56 @@ def phase_5_exercise(session_id, session_data):
     print(f"{CYAN}{ARROW} Sending exercise data via /ingest...{RESET}")
     exercise_data = generate_exercise_data(exercise)
 
-    try:
-        # The glove sends only device_id + data. The backend determines the phase
-        # (exercise, using the first item from needed_training) from session status.
-        response = requests.post(
-            f"{API_BASE}/ingest",
-            json={
-                "device_id": DEVICE_ID,
-                "data": exercise_data
-            },
-            timeout=30
-        )
-        response.raise_for_status()
-        results = response.json()
+    # Retry up to 4 times — DynamoDB scan uses eventually consistent reads, so the
+    # first attempt may still see the session as pre-assessed and re-run assessment.
+    # We detect this by checking whether the response contains 'exercise_results'.
+    results = None
+    for attempt in range(1, 5):
+        try:
+            response = requests.post(
+                f"{API_BASE}/ingest",
+                json={"device_id": DEVICE_ID, "data": exercise_data},
+                timeout=30
+            )
+            response.raise_for_status()
+            results = response.json()
+            if 'exercise_results' in results:
+                break  # Got exercise results — success
+            # Got assessment results again — DynamoDB scan saw stale status. Wait and retry.
+            if attempt < 4:
+                print(f"{DIM}  (retry {attempt}/4 — waiting for DynamoDB consistency...){RESET}")
+                time.sleep(3)
+        except Exception as e:
+            # Connection errors (cold start / reset) are retryable
+            if attempt < 4:
+                print(f"{DIM}  (retry {attempt}/4 after connection error: {e}){RESET}")
+                time.sleep(3)
+            else:
+                print(f"{RED}{CROSS} Exercise submission failed: {e}{RESET}")
+                return False
 
-        # Show exercise results
-        print(f"{GREEN}{CHECK} Exercise data processed!{RESET}\n")
-
-        if 'exercise_results' in results:
-            er = results['exercise_results']
-
-            lines = []
-            if 'overall_percent' in er:
-                score = er['overall_percent']
-                print_progress_bar(f"{exercise_name} Score", score)
-                lines.append(er.get('message', ''))
-
-            if 'features' in er:
-                for feat, val in er['features'].items():
-                    lines.append(f"{feat.title()}: {val:.1f}%")
-
-            if lines:
-                print_box("Exercise Results", [l for l in lines if l], color=CYAN)
-
-        return True
-    except Exception as e:
-        print(f"{RED}{CROSS} Exercise submission failed: {e}{RESET}")
+    if not results or 'exercise_results' not in results:
+        print(f"{RED}{CROSS} Exercise phase did not complete after retries.{RESET}")
         return False
+
+    # Show exercise results
+    print(f"{GREEN}{CHECK} Exercise data processed!{RESET}\n")
+
+    er = results['exercise_results']
+    lines = []
+    if 'overall_percent' in er:
+        score = er['overall_percent']
+        print_progress_bar(f"{exercise_name} Score", score)
+        lines.append(er.get('message', ''))
+
+    if 'features' in er:
+        for feat, val in er['features'].items():
+            lines.append(f"{feat.title()}: {val:.1f}%")
+
+    if lines:
+        print_box("Exercise Results", [l for l in lines if l], color=CYAN)
+
+    return True
 
 
 def phase_6_summary(session_id):
@@ -559,7 +572,7 @@ def phase_6_summary(session_id):
     time.sleep(0.5)
 
     try:
-        response = requests.get(f"{API_BASE}/sessions/{session_id}", timeout=10)
+        response = requests.get(f"{API_BASE}/sessions/{session_id}", timeout=30)
         response.raise_for_status()
         session = response.json()
 
@@ -584,18 +597,22 @@ def phase_6_summary(session_id):
         # Assessment
         ar = session.get('assessment_results', {})
         if ar:
+            task_results = {k: v for k, v in ar.items() if k != 'needed_training'}
+            passed = sum(1 for v in task_results.values() if v == 'PASS')
+            total = len(task_results)
             print(f"{BOLD}{MAGENTA}╠{'═' * 58}╣{RESET}")
             print(f"{BOLD}{MAGENTA}║{RESET} {BOLD}Assessment Results{RESET}{' ' * 40}{BOLD}{MAGENTA}║{RESET}")
-            if 'overall_score' in ar:
-                score = ar['overall_score']
-                status = f"{GREEN}PASS{RESET}" if score >= 70 else f"{YELLOW}MARGINAL{RESET}" if score >= 50 else f"{RED}NEEDS WORK{RESET}"
-                print(f"{BOLD}{MAGENTA}║{RESET}   Overall Score: {BOLD}{score:.1f}%{RESET} - {status}")
-            if 'needed_training' in ar:
-                training = ', '.join([t.replace('_', ' ').title() for t in ar['needed_training'][:3]])
+            print(f"{BOLD}{MAGENTA}║{RESET}   Passed: {passed}/{total}")
+            for task, result in task_results.items():
+                color = GREEN if result == 'PASS' else RED
+                print(f"{BOLD}{MAGENTA}║{RESET}   {BULLET} {task}: {color}{result}{RESET}")
+            needed = ar.get('needed_training', [])
+            if needed:
+                training = ', '.join([t.replace('_', ' ').title() for t in needed[:3]])
                 print(f"{BOLD}{MAGENTA}║{RESET}   Focus Areas: {training}")
 
         # Exercise
-        er = session.get('exercise_results', {})
+        er = session.get('exercise_results')
         if er:
             print(f"{BOLD}{MAGENTA}╠{'═' * 58}╣{RESET}")
             print(f"{BOLD}{MAGENTA}║{RESET} {BOLD}Exercise Results{RESET}{' ' * 41}{BOLD}{MAGENTA}║{RESET}")
@@ -605,6 +622,9 @@ def phase_6_summary(session_id):
                 print(f"{BOLD}{MAGENTA}║{RESET}   Score: {float(er['overall_percent']):.1f}%")
             if 'message' in er:
                 print(f"{BOLD}{MAGENTA}║{RESET}   {er['message']}")
+        else:
+            print(f"{BOLD}{MAGENTA}╠{'═' * 58}╣{RESET}")
+            print(f"{BOLD}{MAGENTA}║{RESET} {DIM}Exercise results not yet available{RESET}{' ' * 23}{BOLD}{MAGENTA}║{RESET}")
 
         print(f"{BOLD}{MAGENTA}╚{'═' * 58}╝{RESET}\n")
 
@@ -644,7 +664,8 @@ def main():
     if not assessment_results:
         print(f"{RED}Demo stopped due to assessment error.{RESET}")
         sys.exit(1)
-    time.sleep(1)
+    # Wait for DynamoDB write to propagate before the exercise ingest scan reads it
+    time.sleep(3)
 
     # Phase 4: Poll results
     session_data = phase_4_poll_results(session_id)

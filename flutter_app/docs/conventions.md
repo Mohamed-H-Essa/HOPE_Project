@@ -3,7 +3,7 @@
 ## Architecture Ground Rules
 
 - **No Bluetooth.** The glove talks to the backend over WiFi. The app talks to the backend over HTTP. The app and glove never communicate directly.
-- **App does NOT call `/ingest`.** That's the glove's endpoint. The app only does CRUD + polling on `/sessions`.
+- **App does NOT call `/ingest` in the normal patient flow.** That's the glove's endpoint. The debug "Simulate Glove" button is the only exception — it calls `/ingest` to mimic the glove during development/demos. This code path lives in `ApiService.simulateGlove()` and is only reachable from the debug waiting screens.
 - **Device linking is a database write**, not a hardware pairing. `PUT /sessions/{id}/device` just stores a `device_id` string so the backend knows which session to route glove data to.
 
 ## File & Naming Conventions

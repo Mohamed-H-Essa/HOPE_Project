@@ -69,7 +69,7 @@ This means the firmware never needs to be updated to change the session flow. Fl
 | Constraint | Detail |
 |------------|--------|
 | No Bluetooth | ESP32 communicates via WiFi only |
-| Glove sends continuously | Batches of 100 samples every ~10s to `/ingest` |
+| Glove sends continuously | Batches of 100 samples every ~5s to `/ingest` (50ms between samples) |
 | No auth | Hardcoded single user, no login screen |
 | No multi-patient | This is a one-patient demo |
 | No real-time streaming | Glove batches data and POSTs; app polls for results |

@@ -141,6 +141,8 @@ List all sessions (for practitioner view).
 
 Get a presigned S3 URL for video upload (10-minute expiry).
 
+**Request**: Empty body
+
 **Response** (200):
 ```json
 {
@@ -150,22 +152,41 @@ Get a presigned S3 URL for video upload (10-minute expiry).
 }
 ```
 
-## Endpoints Used by Glove (NOT by App)
+## Endpoints Used by Glove (and Simulated by App's Debug Button)
 
 ### POST /ingest
 
-The ESP32 glove sends raw sensor batches here over WiFi. The app NEVER calls this.
+The ESP32 glove sends raw sensor batches here over WiFi. In production the app
+never calls this; the debug "Simulate Glove" button on the waiting screens calls
+it to simulate the glove locally during development/demo.
 
+**Request body:**
 ```json
 {
   "device_id": "hope-glove-01",
   "data": [
     {"time": 0, "flex1": 45, "flex2": 38, "fsr1": 62, "fsr2": 55, "emg": 340,
      "ax": 1024, "ay": -512, "az": 16384, "gx": 100, "gy": -50, "gz": 30},
-    ... (99 more samples)
+    ... (99 more samples at 50ms intervals)
   ]
 }
 ```
+
+The payload is **only** `device_id` + `data`. No `type` or `phase` field. The
+backend auto-detects assessment vs exercise from the session's status:
+- `status == 'assessed'` → runs exercise logic
+- anything else → runs assessment logic
+
+**Sensor ranges (matching real firmware):**
+
+| Field | Range | Notes |
+|-------|-------|-------|
+| `time` | 0–4950ms | 50ms intervals, 100 samples = 5 seconds |
+| `flex1`, `flex2` | 0–90 | Finger bend degrees |
+| `fsr1`, `fsr2` | 0–100 | Grip force percentage |
+| `emg` | 0–4000+ | Raw EMG magnitude |
+| `ax`, `ay`, `az` | ±16384 | Accelerometer (±2g), `az` ≈ 16384 at rest |
+| `gx`, `gy`, `gz` | ±500 | Gyroscope (±500°/s) |
 
 ## Status Values (Actual Backend Values)
 

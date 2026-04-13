@@ -86,7 +86,7 @@ This tells the backend which session the glove's data belongs to. The glove itse
 
 ## 4. Ingest Sensor Data (unified endpoint)
 
-**Called by:** ESP32 glove (continuously, every ~10 seconds)
+**Called by:** ESP32 glove (continuously, every ~5 seconds)
 
 ```
 POST /ingest
@@ -98,19 +98,21 @@ POST /ingest
   "device_id": "hope-glove-01",
   "data": [
     {
-      "time": 1000,
+      "time": 0,
       "flex1": 45, "flex2": 38,
       "fsr1": 62, "fsr2": 55,
       "emg": 340,
       "ax": 1024, "ay": -512, "az": 16384,
       "gx": 100, "gy": -50, "gz": 30
     },
-    ...
+    ...99 more samples at 50ms intervals (total ~5 seconds)
   ]
 }
 ```
 
-The glove is a dumb data pipe — it sends only `device_id` and raw sensor samples. It has **no knowledge** of sessions, modes, or exercise names.
+The glove is a dumb data pipe — it sends only `device_id` and raw sensor samples.
+It has **no knowledge** of sessions, modes, or exercise names. The body must
+contain **only** `device_id` and `data` — no `type` or `phase` field.
 
 The backend auto-detects the phase from the linked session's status:
 - `status == 'assessed'` → runs exercise logic (exercise name from `assessment_results.needed_training[0]`)

@@ -27,15 +27,16 @@ flutter_app/
 
       patient/
         session_start_screen.dart      # Step 1 — "Start Session"
-        questionnaire_screen.dart      # Step 2 — Placeholder questions
-        assess_waiting_screen.dart     # Step 3 — Waiting for assessment results
-        assessment_results_screen.dart # Step 4 — PASS/FAIL display
-        exercise_screen.dart           # Step 5 — Exercise + optional video
-        exercise_results_screen.dart   # Step 6 — Scores + message
+        questionnaire_screen.dart      # Step 2 — Pain/stiffness/goals form
+        device_link_screen.dart        # Step 3 — Enter device ID (server-side link)
+        assess_waiting_screen.dart     # Step 4 — Spinner + "Simulate Glove" debug button
+        assessment_results_screen.dart # Step 5 — PASS/FAIL cards per function
+        exercise_waiting_screen.dart   # Step 6 — Shows exercise, "Simulate Glove" debug button
+        exercise_results_screen.dart   # Step 7 — Feature score bars + motivational message
 
       practitioner/
         session_list_screen.dart       # All past sessions list
-        session_detail_screen.dart     # Full session detail + video playback
+        session_detail_screen.dart     # 3-tab detail: Assessment / Exercise / Info
 
     widgets/
       result_card.dart                 # Reusable PASS/FAIL card
@@ -127,30 +128,36 @@ class ExerciseResult {
 
 ## ApiService
 
-All 6 Flutter-facing HTTP calls in one class. The assess and exercise endpoints are called by the ESP32.
+All Flutter-facing HTTP calls in one class. The ESP32 glove calls `/ingest`
+independently; the app's `simulateGlove()` method calls it only for
+development/demo purposes (the "Simulate Glove" debug button).
 
 ```dart
 class ApiService {
-  final String _base = AppConfig.apiBaseUrl;
-  final http.Client _client = http.Client();
+  ApiService(http.Client client)
 
   // Creates a new session, returns session_id string
   Future<String> createSession()
 
   // Saves questionnaire answers
-  Future<void> saveQuestionnaire(String sessionId, Map<String, dynamic> answers)
+  Future<void> submitQuestionnaire(String sessionId, Map<String, dynamic> answers)
 
-  // Returns presigned S3 PUT URL for video upload
-  Future<String> getVideoUploadUrl(String sessionId)
-
-  // Uploads raw video bytes to S3 presigned URL
-  Future<void> uploadVideo(String presignedUrl, File videoFile)
-
-  // Returns list of sessions (for practitioner list screen)
-  Future<List<Session>> listSessions()
+  // Links a device_id string to the session (server-side only, no BT)
+  Future<void> linkDevice(String sessionId, String deviceId)
 
   // Returns full session detail (used for polling + practitioner detail)
   Future<Session> getSession(String sessionId)
+
+  // Returns list of session summaries (for practitioner list screen)
+  Future<List<SessionSummary>> listSessions()
+
+  // Returns presigned S3 PUT URL for video upload (POST, 10-min expiry)
+  Future<String> getVideoUploadUrl(String sessionId)
+
+  // DEBUG ONLY: Simulates glove by POSTing {device_id, data:[100 samples]} to /ingest.
+  // Sends only device_id + data — no type/phase field. Backend auto-detects
+  // assessment vs exercise from session status.
+  Future<void> simulateGlove(String deviceId)
 }
 ```
 
@@ -183,62 +190,47 @@ class VideoService {
 ### SessionProvider (ChangeNotifier)
 
 ```dart
-enum SessionStatus { idle, questionnaire, assessing, assessmentDone, exercising, exerciseDone }
+enum SessionState {
+  idle, creatingSession, questionnaire, linkingDevice,
+  waitingForAssessment, assessmentDone, waitingForExercise, exerciseDone
+}
 
 class SessionProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  SessionProvider({DebugLogStore? logStore})
 
-  String? currentSessionId;
-  SessionStatus status = SessionStatus.idle;
-  Session? currentSession;
-  List<Session> sessionHistory = [];
-  bool isLoading = false;
-  String? errorMessage;
-  Timer? _pollTimer;
+  SessionState get state
+  Session? get currentSession
+  String? get errorMessage
+  bool get isSimulating
 
-  // Step 1
-  Future<void> startSession() async { ... }
+  // Session flow
+  Future<void> startSession()
+  Future<void> submitQuestionnaire(Map<String, dynamic> answers)
+  void skipQuestionnaire()
+  Future<void> linkDevice(String deviceId)
 
-  // Step 2
-  Future<void> submitQuestionnaire(Map<String, dynamic> answers) async { ... }
+  // Polling — called by waiting screens on initState
+  void startPollingForAssessment()  // polls every 3s, 3-min timeout
+  void startPollingForExercise()    // polls every 3s, 3-min timeout
 
-  // Step 3: Polls GET /sessions/{id} every 3s, stops when assessment_results present
-  void startPollingForAssessment() { ... }
+  // Video
+  Future<void> uploadSessionVideo(File videoFile)
 
-  // Step 5: Polls for exercise_results
-  void startPollingForExercise() { ... }
-
-  void stopPolling() { _pollTimer?.cancel(); }
-
-  // Step 5: Video upload flow
-  Future<void> uploadSessionVideo(File videoFile) async { ... }
+  // DEBUG: simulate glove POST to /ingest (assessment or exercise phase auto-detected by backend)
+  Future<void> simulateGlove()
 
   // Practitioner
-  Future<void> loadSessionHistory() async { ... }
-  Future<Session> loadSessionDetail(String id) async { ... }
+  Future<void> loadSessionHistory()
+  Future<Session?> loadSessionDetail(String sessionId)
+
+  void clearError()
+  void resetSession()
 }
 ```
 
-**Polling logic:**
-```dart
-void startPollingForAssessment() {
-  _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-    if (timer.tick > 20) { // 60s timeout
-      timer.cancel();
-      errorMessage = 'Timed out waiting for assessment. Is the glove connected?';
-      notifyListeners();
-      return;
-    }
-    final session = await _api.getSession(currentSessionId!);
-    if (session.assessmentResults != null) {
-      timer.cancel();
-      currentSession = session;
-      status = SessionStatus.assessmentDone;
-      notifyListeners();
-    }
-  });
-}
-```
+**Polling logic:** `Timer.periodic(3s)`, max 60 polls (3-minute timeout). Checks
+for presence of `assessmentResults` / `exerciseResults` on the session object
+(not the status string). On timeout, shows error and resets state.
 
 ---
 

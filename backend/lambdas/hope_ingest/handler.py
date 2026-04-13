@@ -68,6 +68,12 @@ def handler(event, context):
     # Pick the most recent active session
     session = sorted(items, key=lambda x: x.get('created_at', ''), reverse=True)[0]
     session_id = session['session_id']
+
+    # Re-fetch with strongly consistent read to get the latest status.
+    # The scan above uses eventually consistent reads and may return stale data
+    # (e.g., still showing 'questionnaire_done' when the status is already 'assessed').
+    fresh = table.get_item(Key={'session_id': session_id}, ConsistentRead=True)
+    session = fresh.get('Item', session)
     session_status = session.get('status', '')
 
     # Route based on session status — the glove never needs to know which phase it is in
