@@ -1,0 +1,100 @@
+{
+  "@@locale": "ar",
+
+  "appTitle": "هوب لإعادة التأهيل",
+
+  "welcomeTo": "مرحباً بك في",
+  "appName": "HOPE",
+  "appTagline": "نظام إعادة التأهيل الذكي",
+  "getStarted": "ابدأ الآن",
+
+  "chooseYourRole": "اختر دورك",
+  "roleIntro": "ابدأ رحلتك في العلاج الطبيعي.\nاختر دورك.",
+  "rolePatient": "مريض",
+  "rolePatientDesc": "ابدأ جلسة إعادة تأهيل جديدة",
+  "roleDoctor": "طبيب",
+  "roleDoctorDesc": "عرض سجل الجلسات والنتائج",
+
+  "startSession": "بدء الجلسة",
+  "readyToBegin": "هل أنت مستعد للبدء؟",
+  "sessionIntro": "سنرشدك خلال التقييم والتمارين باستخدام قفاز HOPE.",
+  "startNewSession": "بدء جلسة جديدة",
+
+  "linkGloveDevice": "ربط جهاز القفاز",
+  "linkGloveToSession": "ربط القفاز بالجلسة",
+  "linkGloveDesc": "أدخل معرّف الجهاز المطبوع على قفازك. يرسل القفاز البيانات عبر الواي فاي — لا حاجة للإقران.",
+  "deviceId": "معرّف الجهاز",
+  "linkDevice": "ربط الجهاز",
+
+  "assessment": "التقييم",
+  "waitingForAssessment": "في انتظار التقييم",
+  "assessmentDesc": "ارتدِ القفاز وقم بحركات التقييم. يرسل القفاز بيانات الحساسات عبر الواي فاي وسيعالج الخادم نتائجك تلقائياً.",
+  "noGloveSimulate": "لا يوجد قفاز؟ قم بمحاكاته:",
+  "simulateGloveAssessment": "محاكاة القفاز (تقييم)",
+  "simulateGloveExercise": "محاكاة القفاز (تمرين)",
+
+  "assessmentResults": "نتائج التقييم",
+  "functionsPassed": "اجتاز {passed} من {total} وظائف",
+  "continueToCheckin": "متابعة إلى التسجيل",
+
+  "dailyCheckin": "التسجيل اليومي",
+  "submit": "إرسال",
+  "skip": "تخطي",
+
+  "qSleep": "كم ساعة نمت؟",
+  "qTemperature": "ما هي درجة حرارة جسمك؟",
+  "qBloodSugar": "ما هو مستوى السكر في دمك؟",
+  "qBloodPressure": "ما هو ضغط دمك؟",
+  "qHeadache": "هل تعاني من صداع؟",
+  "qDizzy": "هل تشعر بالدوار؟",
+  "qFatigue": "هل تشعر بالتعب أو الإرهاق غير المعتاد؟",
+  "qArmPain": "هل تعاني من ألم في ذراعك أو يدك المصابة؟",
+  "qHandMovement": "هل يمكنك تحريك يدك اليوم كالمعتاد؟",
+  "qFalls": "هل تعرضت لأي سقوط أو إصابات منذ جلستك الأخيرة؟",
+
+  "hoursUnit": "ساعات",
+  "celsiusUnit": "°م",
+  "mgdlUnit": "ملغ/دل",
+  "systolic": "الانقباضي",
+  "diastolic": "الانبساطي",
+  "yes": "نعم",
+  "no": "لا",
+  "next": "التالي",
+  "back": "السابق",
+  "questionProgress": "{current} من {total}",
+
+  "exercise": "التمرين",
+  "exerciseLabel": "التمرين: {name}",
+  "exerciseDesc": "قم بأداء التمرين وأنت ترتدي القفاز. عند الانتهاء، اضغط زر \"تم\" في أسفل الشاشة.",
+  "waitingForExercise": "في انتظار بيانات التمرين...",
+  "doneFetchResults": "تم — جلب النتائج",
+
+  "exerciseResults": "نتائج التمرين",
+  "featureScores": "درجات الأداء",
+  "finishSession": "إنهاء الجلسة",
+  "overallPercent": "{percent}% الإجمالي",
+
+  "sessionHistory": "سجل الجلسات",
+  "noSessionsFound": "لا توجد جلسات",
+  "assessSummary": "{passed}/{total} نجح",
+  "noAssessment": "لا يوجد تقييم",
+  "exerciseSummary": "التمرين: {percent}%",
+
+  "sessionDetail": "تفاصيل الجلسة",
+  "failedToLoadSession": "فشل تحميل الجلسة",
+  "tabAssessment": "التقييم",
+  "tabExercise": "التمرين",
+  "tabInfo": "معلومات",
+  "noAssessmentData": "لا توجد بيانات تقييم",
+  "noExerciseData": "لا توجد بيانات تمرين",
+  "questionnaire": "الاستبيان",
+  "sessionVideo": "فيديو الجلسة",
+
+  "pass": "ناجح",
+  "fail": "فشل",
+
+  "statusCompleted": "مكتمل",
+  "statusInProgress": "قيد التقدم",
+
+  "languageToggleTooltip": "تغيير اللغة"
+}

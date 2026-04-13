@@ -1,0 +1,133 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "HOPE Rehabilitation",
+
+  "welcomeTo": "Welcome to",
+  "appName": "HOPE",
+  "appTagline": "Smart Rehab System",
+  "getStarted": "Get Started",
+
+  "chooseYourRole": "Choose Your Role",
+  "roleIntro": "Start your journey in physical therapy.\nChoose your role.",
+  "rolePatient": "Patient",
+  "rolePatientDesc": "Start a new rehabilitation session",
+  "roleDoctor": "Doctor",
+  "roleDoctorDesc": "View session history and results",
+
+  "startSession": "Start Session",
+  "readyToBegin": "Ready to Begin?",
+  "sessionIntro": "We will guide you through assessment and exercise with your HOPE glove.",
+  "startNewSession": "Start New Session",
+
+  "linkGloveDevice": "Link Glove Device",
+  "linkGloveToSession": "Link Glove to Session",
+  "linkGloveDesc": "Enter the device ID printed on your glove. The glove sends data over WiFi — no pairing needed.",
+  "deviceId": "Device ID",
+  "linkDevice": "Link Device",
+
+  "assessment": "Assessment",
+  "waitingForAssessment": "Waiting for Assessment",
+  "assessmentDesc": "Put on the glove and perform the assessment motions. The glove sends sensor data over WiFi and the server will process your results automatically.",
+  "noGloveSimulate": "No glove? Simulate it:",
+  "simulateGloveAssessment": "Simulate Glove (Assessment)",
+  "simulateGloveExercise": "Simulate Glove (Exercise)",
+
+  "assessmentResults": "Assessment Results",
+  "functionsPassed": "{passed}/{total} functions passed",
+  "@functionsPassed": {
+    "placeholders": {
+      "passed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "continueToCheckin": "Continue to Check-in",
+
+  "dailyCheckin": "Daily Check-in",
+  "submit": "Submit",
+  "skip": "Skip",
+
+  "qSleep": "How many hours did you sleep?",
+  "qTemperature": "What is your body temperature?",
+  "qBloodSugar": "What is your blood sugar level?",
+  "qBloodPressure": "What is your blood pressure?",
+  "qHeadache": "Do you have a headache?",
+  "qDizzy": "Do you feel dizzy?",
+  "qFatigue": "Do you feel fatigued or unusually tired?",
+  "qArmPain": "Do you have any pain in your affected arm or hand?",
+  "qHandMovement": "Are you able to move your hand today as usual?",
+  "qFalls": "Have you experienced any falls or injuries since your last session?",
+
+  "hoursUnit": "hours",
+  "celsiusUnit": "°C",
+  "mgdlUnit": "mg/dL",
+  "systolic": "Systolic",
+  "diastolic": "Diastolic",
+  "yes": "Yes",
+  "no": "No",
+  "next": "Next",
+  "back": "Back",
+  "questionProgress": "{current} of {total}",
+  "@questionProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+
+  "exercise": "Exercise",
+  "exerciseLabel": "Exercise: {name}",
+  "@exerciseLabel": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "exerciseDesc": "Perform the exercise while wearing the glove. When you're done, tap the \"Done\" button below.",
+  "waitingForExercise": "Waiting for exercise data...",
+  "doneFetchResults": "Done — Fetch Results",
+
+  "exerciseResults": "Exercise Results",
+  "featureScores": "Feature Scores",
+  "finishSession": "Finish Session",
+  "overallPercent": "{percent}% overall",
+  "@overallPercent": {
+    "placeholders": {
+      "percent": {"type": "String"}
+    }
+  },
+
+  "sessionHistory": "Session History",
+  "noSessionsFound": "No sessions found",
+  "assessSummary": "{passed}/{total} PASS",
+  "@assessSummary": {
+    "placeholders": {
+      "passed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "noAssessment": "No assessment",
+  "exerciseSummary": "Exercise: {percent}%",
+  "@exerciseSummary": {
+    "placeholders": {
+      "percent": {"type": "String"}
+    }
+  },
+
+  "sessionDetail": "Session Detail",
+  "failedToLoadSession": "Failed to load session",
+  "tabAssessment": "Assessment",
+  "tabExercise": "Exercise",
+  "tabInfo": "Info",
+  "noAssessmentData": "No assessment data",
+  "noExerciseData": "No exercise data",
+  "questionnaire": "Questionnaire",
+  "sessionVideo": "Session Video",
+
+  "pass": "PASS",
+  "fail": "FAIL",
+
+  "statusCompleted": "completed",
+  "statusInProgress": "in_progress",
+
+  "languageToggleTooltip": "Change language"
+}
