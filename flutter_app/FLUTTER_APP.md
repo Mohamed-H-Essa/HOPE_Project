@@ -4,7 +4,7 @@
 
 Mobile companion for the HOPE rehabilitation glove. Two modes:
 
-- **Patient mode**: Linear flow — create session → questionnaire → link device → wait for assessment → view results → wait for exercise → view scores
+- **Patient mode**: Linear flow — create session → link device → wait for assessment → view results → questionnaire → wait for exercise → view scores
 - **Practitioner mode**: Read-only session history viewer with assessment/exercise/video tabs
 
 ## What This App Does NOT Do
@@ -47,7 +47,7 @@ lib/
     home_screen.dart                  # Patient / Practitioner selector
     patient/
       session_start_screen.dart       # "Start Session" button
-      questionnaire_screen.dart       # Pain/stiffness/goals form
+      questionnaire_screen.dart       # Pain/stiffness/goal/comments form (after assessment)
       device_link_screen.dart         # Enter device ID (server-side link, not BT)
       assess_waiting_screen.dart      # Poll for assessment results
       assessment_results_screen.dart  # 4x PASS/FAIL cards

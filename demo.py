@@ -309,26 +309,23 @@ def phase_1_create_session():
         sys.exit(1)
 
 
-def phase_2_questionnaire(session_id):
-    """Phase 2: Submit questionnaire."""
-    print_section("PHASE 2: Patient Questionnaire")
+def phase_questionnaire(session_id):
+    """Daily check-in questionnaire — runs AFTER assessment, BEFORE exercise.
 
-    print(f"{CYAN}{ARROW} Patient filling out questionnaire...{RESET}")
+    Matches the 4-field schema the app sends (see
+    flutter_app/lib/screens/patient/questionnaire_screen.dart:51-57).
+    The app is the source of truth for this schema.
+    """
+    print_section("DAILY CHECK-IN: Questionnaire")
+
+    print(f"{CYAN}{ARROW} Patient filling out daily check-in...{RESET}")
     animate_dots("Processing responses", duration=2.0)
 
     questionnaire = {
-        "age": 45,
-        "gender": "male",
-        "affected_hand": "right",
-        "injury_type": "stroke",
-        "days_since_injury": 90,
-        "current_pain_level": 3,
-        "current_mobility": 40,
-        "previous_therapy": True,
-        "therapy_frequency": "twice_weekly",
-        "goals": ["improve_grip", "increase_range", "reduce_stiffness"],
-        "medical_conditions": ["hypertension"],
-        "medications": ["aspirin"]
+        "pain_level": 3,
+        "stiffness": False,
+        "comments": "Feeling a bit better than yesterday",
+        "goal": "improve_grip",
     }
 
     try:
@@ -339,8 +336,7 @@ def phase_2_questionnaire(session_id):
         )
         response.raise_for_status()
         print(f"{GREEN}{CHECK} Questionnaire submitted successfully!{RESET}")
-        print(f"{DIM}  Age: 45, Hand: Right, Injury: Stroke (90 days ago){RESET}")
-        print(f"{DIM}  Pain Level: 3/10, Mobility: 40%{RESET}\n")
+        print(f"{DIM}  Pain: {questionnaire['pain_level']}/10 | Stiffness: {questionnaire['stiffness']} | Goal: {questionnaire['goal']}{RESET}\n")
         return True
     except Exception as e:
         print(f"{RED}{CROSS} Failed to submit questionnaire: {e}{RESET}")
@@ -587,13 +583,15 @@ def phase_6_summary(session_id):
         # Session info
         print(f"{BOLD}{MAGENTA}║{RESET} {DIM}Session ID:{RESET} {session_id:<44} {BOLD}{MAGENTA}║{RESET}")
 
-        # Questionnaire
+        # Questionnaire (4 canonical fields)
         q = session.get('questionnaire', {})
         if q:
             print(f"{BOLD}{MAGENTA}╠{'═' * 58}╣{RESET}")
-            print(f"{BOLD}{MAGENTA}║{RESET} {BOLD}Patient Info{RESET}{' ' * 46}{BOLD}{MAGENTA}║{RESET}")
-            print(f"{BOLD}{MAGENTA}║{RESET}   Age: {q.get('age', 'N/A')} | Hand: {q.get('affected_hand', 'N/A').title()} | Injury: {q.get('injury_type', 'N/A').title()}{RESET}")
-            print(f"{BOLD}{MAGENTA}║{RESET}   Pain: {q.get('current_pain_level', 'N/A')}/10 | Mobility: {q.get('current_mobility', 'N/A')}%{RESET}")
+            print(f"{BOLD}{MAGENTA}║{RESET} {BOLD}Daily Check-In{RESET}{' ' * 44}{BOLD}{MAGENTA}║{RESET}")
+            print(f"{BOLD}{MAGENTA}║{RESET}   Pain: {q.get('pain_level', 'N/A')}/10 | Stiffness: {q.get('stiffness', 'N/A')} | Goal: {q.get('goal', 'N/A')}{RESET}")
+            comments = q.get('comments', '')
+            if comments:
+                print(f"{BOLD}{MAGENTA}║{RESET}   Comments: {comments}{RESET}")
 
         # Assessment
         ar = session.get('assessment_results', {})
@@ -648,13 +646,7 @@ def main():
     session_id = phase_1_create_session()
     time.sleep(1)
 
-    # Phase 2: Questionnaire
-    if not phase_2_questionnaire(session_id):
-        print(f"{RED}Demo stopped due to questionnaire error.{RESET}")
-        sys.exit(1)
-    time.sleep(1)
-
-    # Phase 2.5: Link device
+    # Phase 2: Link device (happens before assessment in the real app flow)
     if not phase_2b_link_device(session_id):
         print(f"{RED}Demo stopped due to device linking error.{RESET}")
         sys.exit(1)
@@ -665,18 +657,23 @@ def main():
     if not assessment_results:
         print(f"{RED}Demo stopped due to assessment error.{RESET}")
         sys.exit(1)
-    # Wait for DynamoDB write to propagate before the exercise ingest scan reads it
+    # Wait for DynamoDB write to propagate before subsequent reads
     time.sleep(3)
 
-    # Phase 4: Poll results
+    # Phase 4: Poll results (patient views assessment PASS/FAIL)
     session_data = phase_4_poll_results(session_id)
     time.sleep(1)
 
-    # Phase 5: Exercise
+    # Phase 5: Daily check-in questionnaire (optional in the app; always submitted here for demo coverage)
+    if not phase_questionnaire(session_id):
+        print(f"{YELLOW}Questionnaire submission failed; continuing anyway.{RESET}")
+    time.sleep(1)
+
+    # Phase 6: Exercise
     phase_5_exercise(session_id, session_data)
     time.sleep(1)
 
-    # Phase 6: Summary
+    # Phase 7: Summary
     phase_6_summary(session_id)
 
     print(f"\n{BOLD}{GREEN}{'═' * 60}{RESET}")

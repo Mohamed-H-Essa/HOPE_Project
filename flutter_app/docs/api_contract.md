@@ -33,17 +33,21 @@ Create a new session.
 
 ### PUT /sessions/{id}/questionnaire
 
-Submit questionnaire answers.
+Submit questionnaire answers. Called AFTER assessment, BEFORE exercise. Optional — the patient can skip the screen and no PUT is made.
 
-**Request**:
+**Request** (raw shape the app sends — see `lib/screens/patient/questionnaire_screen.dart:51-57`):
 ```json
 {
   "pain_level": 5,
   "stiffness": true,
   "comments": "Feeling okay today",
-  "goal": "Improve grip"
+  "goal": "improve_grip"
 }
 ```
+
+Allowed `goal` values: `improve_grip`, `increase_range`, `reduce_stiffness`, `daily_activities`.
+
+Backend also accepts a wrapped form `{"answers": {...}}` for backwards compatibility (`handler.py:64`), but the app sends the raw object.
 
 **Response** (200): `{"status": "questionnaire_done"}`
 
@@ -78,7 +82,7 @@ the glove's data has been processed.
     "pain_level": 5,
     "stiffness": true,
     "comments": "Feeling okay today",
-    "goal": "Improve grip"
+    "goal": "improve_grip"
   },
   "assessment_results": {
     "Reach": "PASS",

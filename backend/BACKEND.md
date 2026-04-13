@@ -63,13 +63,15 @@ The backend scans DynamoDB: "Find session WHERE device_id = 'hope-glove-01' AND 
 
 ### Status Values
 
+Observed transitions in a real patient session:
+
 ```
-created → questionnaire_done → assessed → exercised
+created → assessed → [questionnaire_done] → exercised
 ```
 
 - `created`: Session exists, nothing else done
-- `questionnaire_done`: Patient filled in the survey
 - `assessed`: Assessment sensor data processed, results available
+- `questionnaire_done`: Patient submitted the questionnaire (comes AFTER assessment in the app flow; skipped entirely if the patient taps "Skip")
 - `exercised`: Exercise sensor data processed, results available
 
 Note: Device linking does NOT change status. It only sets `device_id`.

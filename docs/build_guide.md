@@ -43,10 +43,11 @@ BASE="https://<id>.execute-api.us-east-1.amazonaws.com/prod"
 SESSION=$(curl -s -X POST "$BASE/sessions" | python3 -c "import sys,json; print(json.load(sys.stdin)['session_id'])")
 echo "Session ID: $SESSION"
 
-# Save questionnaire
+# Save questionnaire (runs AFTER assessment in the real app flow; placed here for easy copy-paste testing)
+# The app sends the raw object shape. Backend also accepts {"answers": {...}} wrapping.
 curl -s -X PUT "$BASE/sessions/$SESSION/questionnaire" \
   -H "Content-Type: application/json" \
-  -d '{"answers": {"pain_level": 5, "stiffness": false, "comments": "test"}}'
+  -d '{"pain_level": 5, "stiffness": false, "comments": "test", "goal": "improve_grip"}'
 
 # Link device
 curl -s -X PUT "$BASE/sessions/$SESSION/device" \

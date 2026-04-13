@@ -16,7 +16,7 @@ App (phone)  ──REST API──►  Backend (AWS)  ◄──WiFi HTTP──  G
 ## Session State Machine (Provider)
 
 ```
-idle → creatingSession → questionnaire → linkingDevice → waitingForAssessment → assessmentDone → waitingForExercise → exerciseDone
+idle → creatingSession → linkingDevice → waitingForAssessment → assessmentDone → questionnaire → waitingForExercise → exerciseDone
 ```
 
 This is the Flutter `SessionState` enum in `session_provider.dart`. It tracks
@@ -24,9 +24,15 @@ the app's UI state, not the backend status.
 
 ## Backend Session Status (DynamoDB)
 
+Observed in a real patient session (set by backend handlers as events occur):
+
 ```
-created → questionnaire_done → assessed → exercised
+created → assessed → questionnaire_done → exercised
 ```
+
+`questionnaire_done` is set by `PUT /sessions/{id}/questionnaire`, which the
+app only calls AFTER assessment. If the patient skips the questionnaire, the
+`questionnaire_done` transition is omitted and status goes `created → assessed → exercised`.
 
 The app polls the backend and checks for the presence of `assessment_results`
 or `exercise_results` fields, not the status string directly.
@@ -36,23 +42,22 @@ or `exercise_results` fields, not the status string directly.
 1. **HomeScreen** → Tap "Patient" card
 2. **SessionStartScreen** → Tap "Start New Session"
    - Creates session via `POST /sessions`
-   - Navigates to QuestionnaireScreen
-3. **QuestionnaireScreen** → Fill form, tap "Submit" or "Skip"
-   - Submits via `PUT /sessions/{id}/questionnaire` (or skips)
    - Navigates to DeviceLinkScreen
-4. **DeviceLinkScreen** → Enter device ID (default: `hope-glove-01`), tap "Link"
+3. **DeviceLinkScreen** → Enter device ID (default: `hope-glove-01`), tap "Link"
    - Links via `PUT /sessions/{id}/device`
    - This tells the backend which session to route the glove's data to
    - **No Bluetooth pairing happens here** — just a server-side string association
    - Navigates to AssessWaitingScreen
-5. **AssessWaitingScreen** → Shows spinner, polls every 3s
+4. **AssessWaitingScreen** → Shows spinner, polls every 3s
    - Meanwhile, the patient wears the glove and performs assessment motions
    - Glove sends sensor data over WiFi to `/ingest`
    - Backend processes data and writes `assessment_results` to DynamoDB
    - App detects `assessment_results != null` on next poll
    - Auto-navigates to AssessmentResultsScreen (or shows timeout after 60s)
-6. **AssessmentResultsScreen** → Shows 4 PASS/FAIL cards (Reach, Grasp, Manipulation, Release)
-   - Tap "Continue to Exercise"
+5. **AssessmentResultsScreen** → Shows 4 PASS/FAIL cards (Reach, Grasp, Manipulation, Release)
+   - Tap "Continue" → navigates to QuestionnaireScreen
+6. **QuestionnaireScreen** → Fill form, tap "Submit" or "Skip"
+   - Submits via `PUT /sessions/{id}/questionnaire` (or skips — no API call)
    - Navigates to ExerciseWaitingScreen
 7. **ExerciseWaitingScreen** → Shows which exercise to perform
    - Patient performs exercise with glove

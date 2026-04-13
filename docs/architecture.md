@@ -83,25 +83,27 @@ Step 1: Flutter app                    → POST /sessions
          Backend                       → creates session record in DynamoDB
          Flutter app                   ← receives session_id
 
-Step 2: Flutter app (questionnaire)    → PUT /sessions/{id}/questionnaire
-         Backend                       → stores answers in DynamoDB session record
-
-Step 3: Flutter app links device       → PUT /sessions/{id}/device
+Step 2: Flutter app links device       → PUT /sessions/{id}/device
          Backend                       → stores device_id in session record
 
-Step 4: Patient puts on glove, flexes hand
+Step 3: Patient puts on glove, flexes hand
          Glove POSTs sensor batches to → POST /ingest  {"device_id": "...", "data": [...]}
          Backend looks up session by device_id
          Backend runs assess_session(data) → writes assessment_results to DynamoDB
          Flutter app polls GET /sessions/{id} every 3s until assessment_results appears
 
-Step 5: Flutter app displays assessment results (PASS/FAIL per function)
+Step 4: Flutter app displays assessment results (PASS/FAIL per function)
+
+Step 5: Flutter app (questionnaire — optional)  → PUT /sessions/{id}/questionnaire
+         Backend                                 → stores answers in DynamoDB session record
+         (If the patient taps "Skip", no PUT is made and status stays 'assessed'.)
 
 Step 6: Patient exercises with glove on. Optional: Flutter app records video.
          If video: Flutter app         → POST /sessions/{id}/video-upload-url
                    Backend             ← returns presigned S3 PUT URL
                    Flutter app         → PUT video bytes to S3
-         Glove keeps POSTing to /ingest — backend sees status == 'assessed',
+         Glove keeps POSTing to /ingest — backend sees status == 'assessed'
+         (or 'questionnaire_done' if the questionnaire was submitted),
          runs run_exercise(data, exercise_name) → writes exercise_results to DynamoDB
          Flutter app polls GET /sessions/{id} every 3s until exercise_results appears
 
@@ -110,11 +112,16 @@ Step 7: Flutter app displays exercise scores
 
 ## Session State Machine
 
+Observed transitions in a real patient session (each set by the handler that fires):
+
 ```
-created → questionnaire_done → assessed → exercised → completed
+created → assessed → [questionnaire_done] → exercised
 ```
 
-The `status` field in DynamoDB tracks this. The app uses it to know what data to show.
+`questionnaire_done` is optional: it only appears if the patient submits the
+questionnaire (not if they tap Skip). The `status` field in DynamoDB tracks
+this. The app uses the presence of `assessment_results` / `exercise_results`
+to drive its UI, not the status string directly.
 
 ## Polling Strategy
 

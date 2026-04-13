@@ -31,22 +31,25 @@ POST /sessions
 
 ## 2. Save Questionnaire
 
-**Called by:** Flutter app (Step 2, optional)
+**Called by:** Flutter app, optional, AFTER the assessment phase (between `AssessmentResultsScreen` and `ExerciseWaitingScreen` — the patient can skip it).
 
 ```
 PUT /sessions/{session_id}/questionnaire
 ```
 
-**Request body:**
+**Request body** (raw shape the app actually sends — see `flutter_app/lib/screens/patient/questionnaire_screen.dart:51-57`):
 ```json
 {
-  "answers": {
-    "pain_level": 4,
-    "stiffness": true,
-    "comments": "Feeling better than last week"
-  }
+  "pain_level": 4,
+  "stiffness": true,
+  "comments": "Feeling better than last week",
+  "goal": "improve_grip"
 }
 ```
+
+Allowed `goal` values: `improve_grip`, `increase_range`, `reduce_stiffness`, `daily_activities`.
+
+The backend also accepts a wrapped form `{"answers": {...}}` for backwards compatibility (`handler.py:64`: `body.get('answers', body)`), but the app sends the raw object.
 
 **Response 200:**
 ```json
@@ -236,7 +239,8 @@ GET /sessions/{session_id}
   "questionnaire": {
     "pain_level": 4,
     "stiffness": true,
-    "comments": "Feeling better than last week"
+    "comments": "Feeling better than last week",
+    "goal": "improve_grip"
   },
   "assessment_results": {
     "Reach": "PASS",

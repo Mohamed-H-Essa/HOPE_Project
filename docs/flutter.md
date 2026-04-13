@@ -191,8 +191,10 @@ class VideoService {
 
 ```dart
 enum SessionState {
-  idle, creatingSession, questionnaire, linkingDevice,
-  waitingForAssessment, assessmentDone, waitingForExercise, exerciseDone
+  idle, creatingSession, linkingDevice,
+  waitingForAssessment, assessmentDone,
+  questionnaire,
+  waitingForExercise, exerciseDone
 }
 
 class SessionProvider extends ChangeNotifier {
@@ -249,21 +251,22 @@ Two large cards centered vertically:
 - Title: "HOPE"
 - Subtitle: "Rehabilitation Session"
 - Large teal "Start Session" `ElevatedButton`
-- On tap: calls `provider.startSession()`, shows `CircularProgressIndicator`, then pushes questionnaire screen on success
+- On tap: calls `provider.startSession()`, shows `CircularProgressIndicator`, then pushes `DeviceLinkScreen` on success (the questionnaire comes later, AFTER assessment)
 
 ---
 
 ### patient/questionnaire_screen.dart
 
-Hardcoded placeholder questions — can be updated later:
+Shown AFTER `AssessmentResultsScreen`, BEFORE `ExerciseWaitingScreen`.
 
-| # | Question | Widget |
-|---|----------|--------|
-| 1 | Pain level today (1–10) | `Slider` |
-| 2 | Experiencing stiffness? | `Switch` |
-| 3 | Any comments | `TextFormField` |
+| # | Question | Widget | JSON key | Type |
+|---|----------|--------|----------|------|
+| 1 | Pain level today (1–10) | `Slider` (1–10, 9 divisions) | `pain_level` | int |
+| 2 | Experiencing stiffness? | `SwitchListTile` | `stiffness` | bool |
+| 3 | Today's goal | `DropdownButtonFormField` — values: `improve_grip`, `increase_range`, `reduce_stiffness`, `daily_activities` | `goal` | string |
+| 4 | Additional comments | `TextFormField` (multi-line) | `comments` | string |
 
-Two buttons: **Skip** (navigates forward without API call) and **Submit** (calls `provider.submitQuestionnaire()`, then navigates).
+Two buttons: **Skip** (calls `provider.skipQuestionnaire()` — no API call, just a state transition to `waitingForExercise`) and **Submit** (calls `provider.submitQuestionnaire(answers)` → `PUT /sessions/{id}/questionnaire`, then navigates to `ExerciseWaitingScreen`).
 
 ---
 

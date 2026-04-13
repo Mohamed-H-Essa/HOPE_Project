@@ -44,17 +44,23 @@ HOPE (Hand Orthosis for Progressive Exercise) is a smart rehabilitation glove sy
 
 ## Session Lifecycle
 
+`status` is the DynamoDB field. `[device linked]` is a data-only event (it
+sets `device_id` on the row without changing `status`). `[questionnaire_done]`
+is optional — the patient can skip it, in which case status jumps straight
+from `assessed` to `exercised`.
+
 ```
-created → questionnaire_done → [device linked] → assessed → exercised
-   │              │                                  │           │
-   │   App: PUT   │  App: PUT /device                │           │
-   │   /question. │  (sets device_id on session)     │           │
-   │              │                                  │           │
-   │              │  Glove: POST /ingest ────────────┘           │
-   │              │  (backend runs assess_session)               │
-   │              │                                              │
-   │              │  Glove: POST /ingest again ──────────────────┘
-   │              │  (backend runs run_exercise)
+created → [device linked] → assessed → [questionnaire_done] → exercised
+   │           │                │                │                 │
+   │  App:     │  App: PUT      │  App: PUT      │                 │
+   │  POST     │  /device       │  /question.    │                 │
+   │  /sess.   │                │  (optional)    │                 │
+   │           │                │                │                 │
+   │           │  Glove: POST /ingest ───────────┘                 │
+   │           │  (backend runs assess_session)                    │
+   │           │                                                   │
+   │           │  Glove: POST /ingest again ───────────────────────┘
+   │           │  (backend runs run_exercise)
 ```
 
 ## Repository Layout
