@@ -98,7 +98,7 @@ POST /ingest
   "device_id": "hope-glove-01",
   "data": [
     {
-      "time": 0,
+      "time": 19136,
       "flex1": 45, "flex2": 38,
       "fsr1": 62, "fsr2": 55,
       "emg": 340,
@@ -109,6 +109,8 @@ POST /ingest
   ]
 }
 ```
+
+Canonical field schema (types, ranges, units) lives in [`firmware/FIRMWARE.md`](../firmware/FIRMWARE.md#sensors). Highlights: `time` is `millis()` since boot (not reset per batch); `fsr` is 0 = no force, 100 = max; `emg` is `abs(raw−2000)×2` (not raw ADC); IMU values are raw MPU6050 int16 LSB at ±2g / ±250°/s.
 
 The glove is a dumb data pipe — it sends only `device_id` and raw sensor samples.
 It has **no knowledge** of sessions, modes, or exercise names. The body must

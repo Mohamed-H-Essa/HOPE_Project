@@ -27,6 +27,8 @@ Called by the **ESP32 glove only**. Single endpoint that handles both assessment
 |--------|------|---------|
 | POST | `/ingest` | Accept sensor batch, run assessment or exercise logic |
 
+Payload shape (fields, ranges, units) is defined in [`firmware/FIRMWARE.md`](../firmware/FIRMWARE.md#sensors).
+
 **Routing logic inside `/ingest`:**
 1. Extract `device_id` from request body
 2. Scan DynamoDB for active session with that `device_id` (status != 'completed')

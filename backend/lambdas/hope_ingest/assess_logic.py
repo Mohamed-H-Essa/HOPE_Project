@@ -24,6 +24,10 @@ def low_pass(values, alpha=0.1):
 # ==============================
 # APPLY FILTERS TO DATA
 # ==============================
+# Canonical per-sample schema lives in firmware/FIRMWARE.md#sensors.
+# Each item in `data` has: time (ms since boot), flex1/flex2 (0-90°),
+# fsr1/fsr2 (0-100, 0=no force), emg (0-4000 rectified), ax/ay/az and
+# gx/gy/gz (raw MPU6050 int16 LSB at ±2g / ±250°/s).
 def apply_filters(data):
     if not data:
         return []
