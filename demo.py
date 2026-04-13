@@ -310,11 +310,11 @@ def phase_1_create_session():
 
 
 def phase_questionnaire(session_id):
-    """Daily check-in questionnaire — runs AFTER assessment, BEFORE exercise.
+    """10-question daily check-in — runs AFTER assessment, BEFORE exercise.
 
-    Matches the 4-field schema the app sends (see
-    flutter_app/lib/screens/patient/questionnaire_screen.dart:51-57).
-    The app is the source of truth for this schema.
+    Matches the schema the app sends (see
+    flutter_app/lib/screens/patient/questionnaire_screen.dart:18-39).
+    The app is the source of truth for these keys and shapes.
     """
     print_section("DAILY CHECK-IN: Questionnaire")
 
@@ -322,10 +322,16 @@ def phase_questionnaire(session_id):
     animate_dots("Processing responses", duration=2.0)
 
     questionnaire = {
-        "pain_level": 3,
-        "stiffness": False,
-        "comments": "Feeling a bit better than yesterday",
-        "goal": "improve_grip",
+        "sleep_hours": 7.5,
+        "body_temperature": 37.0,
+        "blood_sugar": 100,
+        "blood_pressure": {"systolic": 120, "diastolic": 80},
+        "headache": False,
+        "dizzy": False,
+        "fatigue": True,
+        "arm_pain": 3,
+        "hand_movement": True,
+        "falls_injuries": False,
     }
 
     try:
@@ -336,7 +342,8 @@ def phase_questionnaire(session_id):
         )
         response.raise_for_status()
         print(f"{GREEN}{CHECK} Questionnaire submitted successfully!{RESET}")
-        print(f"{DIM}  Pain: {questionnaire['pain_level']}/10 | Stiffness: {questionnaire['stiffness']} | Goal: {questionnaire['goal']}{RESET}\n")
+        bp = questionnaire['blood_pressure']
+        print(f"{DIM}  Sleep: {questionnaire['sleep_hours']}h | Temp: {questionnaire['body_temperature']}°C | BP: {bp['systolic']}/{bp['diastolic']} | Arm pain: {questionnaire['arm_pain']}/10{RESET}\n")
         return True
     except Exception as e:
         print(f"{RED}{CROSS} Failed to submit questionnaire: {e}{RESET}")
@@ -583,15 +590,21 @@ def phase_6_summary(session_id):
         # Session info
         print(f"{BOLD}{MAGENTA}║{RESET} {DIM}Session ID:{RESET} {session_id:<44} {BOLD}{MAGENTA}║{RESET}")
 
-        # Questionnaire (4 canonical fields)
+        # Daily check-in questionnaire (10 canonical fields)
         q = session.get('questionnaire', {})
         if q:
+            bp = q.get('blood_pressure') or {}
             print(f"{BOLD}{MAGENTA}╠{'═' * 58}╣{RESET}")
             print(f"{BOLD}{MAGENTA}║{RESET} {BOLD}Daily Check-In{RESET}{' ' * 44}{BOLD}{MAGENTA}║{RESET}")
-            print(f"{BOLD}{MAGENTA}║{RESET}   Pain: {q.get('pain_level', 'N/A')}/10 | Stiffness: {q.get('stiffness', 'N/A')} | Goal: {q.get('goal', 'N/A')}{RESET}")
-            comments = q.get('comments', '')
-            if comments:
-                print(f"{BOLD}{MAGENTA}║{RESET}   Comments: {comments}{RESET}")
+            print(f"{BOLD}{MAGENTA}║{RESET}   Sleep: {q.get('sleep_hours', 'N/A')}h | Temp: {q.get('body_temperature', 'N/A')}°C | Sugar: {q.get('blood_sugar', 'N/A')} mg/dL{RESET}")
+            print(f"{BOLD}{MAGENTA}║{RESET}   BP: {bp.get('systolic', 'N/A')}/{bp.get('diastolic', 'N/A')} | Arm pain: {q.get('arm_pain', 'N/A')}/10{RESET}")
+            symptoms = [
+                k for k in ('headache', 'dizzy', 'fatigue', 'falls_injuries') if q.get(k)
+            ]
+            if not q.get('hand_movement', True):
+                symptoms.append('reduced hand movement')
+            if symptoms:
+                print(f"{BOLD}{MAGENTA}║{RESET}   Reported: {', '.join(symptoms)}{RESET}")
 
         # Assessment
         ar = session.get('assessment_results', {})

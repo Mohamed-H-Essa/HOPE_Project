@@ -47,7 +47,7 @@ lib/
     home_screen.dart                  # Patient / Practitioner selector
     patient/
       session_start_screen.dart       # "Start Session" button
-      questionnaire_screen.dart       # Pain/stiffness/goal/comments form (after assessment)
+      questionnaire_screen.dart       # 10-question daily check-in (after assessment)
       device_link_screen.dart         # Enter device ID (server-side link, not BT)
       assess_waiting_screen.dart      # Poll for assessment results
       assessment_results_screen.dart  # 4x PASS/FAIL cards

@@ -47,7 +47,7 @@ echo "Session ID: $SESSION"
 # The app sends the raw object shape. Backend also accepts {"answers": {...}} wrapping.
 curl -s -X PUT "$BASE/sessions/$SESSION/questionnaire" \
   -H "Content-Type: application/json" \
-  -d '{"pain_level": 5, "stiffness": false, "comments": "test", "goal": "improve_grip"}'
+  -d '{"sleep_hours":7.5,"body_temperature":37.0,"blood_sugar":100,"blood_pressure":{"systolic":120,"diastolic":80},"headache":false,"dizzy":false,"fatigue":true,"arm_pain":3,"hand_movement":true,"falls_injuries":false}'
 
 # Link device
 curl -s -X PUT "$BASE/sessions/$SESSION/device" \

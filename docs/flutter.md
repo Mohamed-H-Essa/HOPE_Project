@@ -257,16 +257,26 @@ Two large cards centered vertically:
 
 ### patient/questionnaire_screen.dart
 
-Shown AFTER `AssessmentResultsScreen`, BEFORE `ExerciseWaitingScreen`.
+Shown AFTER `AssessmentResultsScreen`, BEFORE `ExerciseWaitingScreen`. One question per `PageView` page with a progress indicator; Back/Next buttons; an AppBar **Skip** that short-circuits to `ExerciseWaitingScreen` without a `PUT`.
+
+Questions (order and keys defined by `_questions` list at `questionnaire_screen.dart:18-39`):
 
 | # | Question | Widget | JSON key | Type |
 |---|----------|--------|----------|------|
-| 1 | Pain level today (1–10) | `Slider` (1–10, 9 divisions) | `pain_level` | int |
-| 2 | Experiencing stiffness? | `SwitchListTile` | `stiffness` | bool |
-| 3 | Today's goal | `DropdownButtonFormField` — values: `improve_grip`, `increase_range`, `reduce_stiffness`, `daily_activities` | `goal` | string |
-| 4 | Additional comments | `TextFormField` (multi-line) | `comments` | string |
+| 1 | Hours of sleep | `_NumberSlider` 0–14, 0.5 step | `sleep_hours` | number |
+| 2 | Body temperature | `_NumberSlider` 34–42 °C, 0.1 step | `body_temperature` | number |
+| 3 | Blood sugar | `_NumberSlider` 40–400 mg/dL | `blood_sugar` | int |
+| 4 | Blood pressure | `_BloodPressureInput` (systolic/diastolic) | `blood_pressure` | `{systolic, diastolic}` |
+| 5 | Headache | `_YesNoInput` | `headache` | bool |
+| 6 | Dizzy | `_YesNoInput` | `dizzy` | bool |
+| 7 | Fatigued | `_YesNoInput` | `fatigue` | bool |
+| 8 | Pain in affected arm/hand | `_NumberSlider` 0–10 | `arm_pain` | int |
+| 9 | Hand movement as usual today | `_YesNoInput` | `hand_movement` | bool |
+| 10 | Falls/injuries since last session | `_YesNoInput` | `falls_injuries` | bool |
 
-Two buttons: **Skip** (calls `provider.skipQuestionnaire()` — no API call, just a state transition to `waitingForExercise`) and **Submit** (calls `provider.submitQuestionnaire(answers)` → `PUT /sessions/{id}/questionnaire`, then navigates to `ExerciseWaitingScreen`).
+Each page shows the corresponding icon from `assets/questionnaire/{key}.jpeg` (except `falls_injuries` → `falls.jpeg`, `body_temperature` → `temperature.jpeg`, `sleep_hours` → `sleep.jpeg`).
+
+Submission: `provider.submitQuestionnaire(Map.from(_answers))` → `PUT /sessions/{id}/questionnaire`. Skip: `provider.skipQuestionnaire()` (state transition only, no HTTP).
 
 ---
 

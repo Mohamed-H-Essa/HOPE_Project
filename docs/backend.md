@@ -36,7 +36,7 @@ Single table, no GSI needed (demo has <20 sessions total, full table scan is fin
 | `created_at` | S | `"2026-04-01T10:00:00Z"` |
 | `status` | S | `"created"` / `"assessed"` / `"exercised"` |
 | `device_id` | S | `"hope-glove-01"` |
-| `questionnaire` | M | `{"pain_level": 4, "stiffness": true, "comments": "...", "goal": "improve_grip"}` |
+| `questionnaire` | M | 10-field daily check-in — see [`docs/api.md` § Save Questionnaire](../docs/api.md#2-save-questionnaire) for full schema |
 | `assessment_results` | M | `{"Reach": "PASS", "Grasp": "FAIL", ...}` |
 | `assessment_features` | M | `{"speed": "2.14", "rom": "67.3", ...}` |
 | `exercise_results` | M | `{"exercise": "Grasp", "overall_percent": 70.2, ...}` |

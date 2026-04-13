@@ -33,19 +33,32 @@ Create a new session.
 
 ### PUT /sessions/{id}/questionnaire
 
-Submit questionnaire answers. Called AFTER assessment, BEFORE exercise. Optional — the patient can skip the screen and no PUT is made.
+Submit the 10-question daily check-in. Called AFTER assessment, BEFORE exercise. Optional — the AppBar Skip button makes no HTTP call.
 
-**Request** (raw shape the app sends — see `lib/screens/patient/questionnaire_screen.dart:51-57`):
+**Request** — schema defined by `lib/screens/patient/questionnaire_screen.dart:18-39` (source of truth):
 ```json
 {
-  "pain_level": 5,
-  "stiffness": true,
-  "comments": "Feeling okay today",
-  "goal": "improve_grip"
+  "sleep_hours": 7.5,
+  "body_temperature": 37.0,
+  "blood_sugar": 100,
+  "blood_pressure": {"systolic": 120, "diastolic": 80},
+  "headache": false,
+  "dizzy": false,
+  "fatigue": true,
+  "arm_pain": 3,
+  "hand_movement": true,
+  "falls_injuries": false
 }
 ```
 
-Allowed `goal` values: `improve_grip`, `increase_range`, `reduce_stiffness`, `daily_activities`.
+| Key | Type | Notes |
+|---|---|---|
+| `sleep_hours` | number | 0–14, 0.5 step |
+| `body_temperature` | number | °C, 34–42, 0.1 step |
+| `blood_sugar` | integer | mg/dL, 40–400 |
+| `blood_pressure` | `{systolic:int, diastolic:int}` | mm Hg |
+| `headache`, `dizzy`, `fatigue`, `hand_movement`, `falls_injuries` | bool | yes/no |
+| `arm_pain` | integer | 0–10 pain scale |
 
 Backend also accepts a wrapped form `{"answers": {...}}` for backwards compatibility (`handler.py:64`), but the app sends the raw object.
 
@@ -79,10 +92,16 @@ the glove's data has been processed.
   "status": "assessed",
   "device_id": "hope-glove-01",
   "questionnaire": {
-    "pain_level": 5,
-    "stiffness": true,
-    "comments": "Feeling okay today",
-    "goal": "improve_grip"
+    "sleep_hours": 7.5,
+    "body_temperature": 37.0,
+    "blood_sugar": 100,
+    "blood_pressure": {"systolic": 120, "diastolic": 80},
+    "headache": false,
+    "dizzy": false,
+    "fatigue": true,
+    "arm_pain": 3,
+    "hand_movement": true,
+    "falls_injuries": false
   },
   "assessment_results": {
     "Reach": "PASS",

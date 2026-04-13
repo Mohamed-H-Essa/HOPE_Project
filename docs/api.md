@@ -31,25 +31,47 @@ POST /sessions
 
 ## 2. Save Questionnaire
 
-**Called by:** Flutter app, optional, AFTER the assessment phase (between `AssessmentResultsScreen` and `ExerciseWaitingScreen` — the patient can skip it).
+**Called by:** Flutter app, optional, AFTER the assessment phase (between `AssessmentResultsScreen` and `ExerciseWaitingScreen`). The Skip button in the app's AppBar submits no request — it's a pure UI transition.
 
 ```
 PUT /sessions/{session_id}/questionnaire
 ```
 
-**Request body** (raw shape the app actually sends — see `flutter_app/lib/screens/patient/questionnaire_screen.dart:51-57`):
+**Request body** — the 10-question daily check-in. Keys and value shapes are defined by `flutter_app/lib/screens/patient/questionnaire_screen.dart:18-39` (source of truth):
+
 ```json
 {
-  "pain_level": 4,
-  "stiffness": true,
-  "comments": "Feeling better than last week",
-  "goal": "improve_grip"
+  "sleep_hours": 7.5,
+  "body_temperature": 37.0,
+  "blood_sugar": 100,
+  "blood_pressure": {"systolic": 120, "diastolic": 80},
+  "headache": false,
+  "dizzy": false,
+  "fatigue": true,
+  "arm_pain": 3,
+  "hand_movement": true,
+  "falls_injuries": false
 }
 ```
 
-Allowed `goal` values: `improve_grip`, `increase_range`, `reduce_stiffness`, `daily_activities`.
+Field reference:
+
+| Key | Type | Units / range |
+|---|---|---|
+| `sleep_hours` | number | hours, 0–14, 0.5 step |
+| `body_temperature` | number | °C, 34–42, 0.1 step |
+| `blood_sugar` | integer | mg/dL, 40–400 |
+| `blood_pressure` | `{systolic:int, diastolic:int}` | mm Hg |
+| `headache` | bool | yes/no |
+| `dizzy` | bool | yes/no |
+| `fatigue` | bool | yes/no |
+| `arm_pain` | integer | 0–10 pain scale |
+| `hand_movement` | bool | yes/no — "able to move your hand today as usual" |
+| `falls_injuries` | bool | yes/no — "any falls or injuries since last session" |
 
 The backend also accepts a wrapped form `{"answers": {...}}` for backwards compatibility (`handler.py:64`: `body.get('answers', body)`), but the app sends the raw object.
+
+**Note on numeric round-trip:** DynamoDB stores numbers as arbitrary-precision `Decimal`. The `GET /sessions/{id}` response re-serializes them as JSON floats via `_DecimalEncoder` in `handler.py`, so integer inputs (e.g. `"systolic": 120`) may come back as floats (`120.0`). Clients should parse numeric questionnaire fields loosely.
 
 **Response 200:**
 ```json
@@ -237,10 +259,16 @@ GET /sessions/{session_id}
   "status": "exercised",
   "device_id": "hope-glove-01",
   "questionnaire": {
-    "pain_level": 4,
-    "stiffness": true,
-    "comments": "Feeling better than last week",
-    "goal": "improve_grip"
+    "sleep_hours": 7.5,
+    "body_temperature": 37.0,
+    "blood_sugar": 100,
+    "blood_pressure": {"systolic": 120, "diastolic": 80},
+    "headache": false,
+    "dizzy": false,
+    "fatigue": true,
+    "arm_pain": 3,
+    "hand_movement": true,
+    "falls_injuries": false
   },
   "assessment_results": {
     "Reach": "PASS",
