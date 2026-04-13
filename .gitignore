@@ -73,7 +73,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Scoped to repo root so it doesn't nuke Flutter's `flutter_app/lib/` tree.
+# (Originally an unscoped `lib/` from a Python-template .gitignore.)
+/lib/
 lib64/
 parts/
 sdist/
