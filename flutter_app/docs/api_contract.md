@@ -165,7 +165,7 @@ it to simulate the glove locally during development/demo.
 {
   "device_id": "hope-glove-01",
   "data": [
-    {"time": 0, "flex1": 45, "flex2": 38, "fsr1": 62, "fsr2": 55, "emg": 340,
+    {"time": 19136, "flex1": 45, "flex2": 38, "fsr1": 62, "fsr2": 55, "emg": 340,
      "ax": 1024, "ay": -512, "az": 16384, "gx": 100, "gy": -50, "gz": 30},
     ... (99 more samples at 50ms intervals)
   ]
@@ -177,16 +177,16 @@ backend auto-detects assessment vs exercise from the session's status:
 - `status == 'assessed'` → runs exercise logic
 - anything else → runs assessment logic
 
-**Sensor ranges (matching real firmware):**
+**Sensor ranges.** Canonical table lives in [`firmware/FIRMWARE.md`](../../firmware/FIRMWARE.md#sensors); reproduced here for convenience.
 
-| Field | Range | Notes |
-|-------|-------|-------|
-| `time` | 0–4950ms | 50ms intervals, 100 samples = 5 seconds |
-| `flex1`, `flex2` | 0–90 | Finger bend degrees |
-| `fsr1`, `fsr2` | 0–100 | Grip force percentage |
-| `emg` | 0–4000+ | Raw EMG magnitude |
-| `ax`, `ay`, `az` | ±16384 | Accelerometer (±2g), `az` ≈ 16384 at rest |
-| `gx`, `gy`, `gz` | ±500 | Gyroscope (±500°/s) |
+| Field | Range | Units | Notes |
+|-------|-------|-------|-------|
+| `time` | `millis()` since boot (monotonic) | ms | **Not** reset per batch. Samples ~50 ms apart. |
+| `flex1`, `flex2` | 0–90 | degrees | Finger bend angle |
+| `fsr1`, `fsr2` | 0–100 | percent | Grip force. **0 = no force, 100 = max** |
+| `emg` | ~0–4000 | rectified magnitude | `abs(raw−2000)×2`, not raw ADC |
+| `ax`, `ay`, `az` | ±32768 LSB | raw | MPU6050 ±2g (16384 LSB/g); `az` ≈ 16384 at rest |
+| `gx`, `gy`, `gz` | ±32768 LSB | raw | MPU6050 ±250°/s (131 LSB per °/s) |
 
 ## Status Values (Actual Backend Values)
 
