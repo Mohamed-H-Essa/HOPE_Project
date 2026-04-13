@@ -24,18 +24,21 @@ the app's UI state, not the backend status.
 
 ## Backend Session Status (DynamoDB)
 
-Observed in a real patient session (set by backend handlers as events occur):
+Observed in a real patient session:
 
 ```
-created → assessed → questionnaire_done → exercised
+created → assessed → exercised
 ```
 
-`questionnaire_done` is set by `PUT /sessions/{id}/questionnaire`, which the
-app only calls AFTER assessment. If the patient skips the questionnaire, the
-`questionnaire_done` transition is omitted and status goes `created → assessed → exercised`.
+Because the app shows the questionnaire AFTER assessment, the backend's
+`save_questionnaire` sees status == 'assessed' when the PUT arrives and
+refuses to regress it back to 'questionnaire_done' — it just writes the
+answers. So `questionnaire_done` never appears in the real app flow.
 
 The app polls the backend and checks for the presence of `assessment_results`
-or `exercise_results` fields, not the status string directly.
+or `exercise_results` fields, not the status string directly. The ingest
+Lambda routes batches to assessment vs exercise the same way: by the
+presence of `assessment_results` on the session row.
 
 ## Patient Flow (Step-by-Step)
 

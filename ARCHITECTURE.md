@@ -44,24 +44,32 @@ HOPE (Hand Orthosis for Progressive Exercise) is a smart rehabilitation glove sy
 
 ## Session Lifecycle
 
-`status` is the DynamoDB field. `[device linked]` is a data-only event (it
-sets `device_id` on the row without changing `status`). `[questionnaire_done]`
-is optional — the patient can skip it, in which case status jumps straight
-from `assessed` to `exercised`.
+`status` is the DynamoDB field. Device linking sets `device_id` on the row
+without changing `status`. The questionnaire PUT writes its answers but
+doesn't regress status once assessment has run (see `save_questionnaire`
+in `hope_session_api/handler.py`), so in the app's actual flow status
+observes three values: `created`, `assessed`, `exercised`.
 
 ```
-created → [device linked] → assessed → [questionnaire_done] → exercised
-   │           │                │                │                 │
-   │  App:     │  App: PUT      │  App: PUT      │                 │
-   │  POST     │  /device       │  /question.    │                 │
-   │  /sess.   │                │  (optional)    │                 │
-   │           │                │                │                 │
-   │           │  Glove: POST /ingest ───────────┘                 │
-   │           │  (backend runs assess_session)                    │
-   │           │                                                   │
-   │           │  Glove: POST /ingest again ───────────────────────┘
-   │           │  (backend runs run_exercise)
+created → [device linked] → assessed → [questionnaire PUT] → exercised
+   │           │                │              │                 │
+   │  App:     │  App: PUT      │  App: PUT    │                 │
+   │  POST     │  /device       │  /question.  │                 │
+   │  /sess.   │                │  (writes     │                 │
+   │           │                │   answers,   │                 │
+   │           │                │   status     │                 │
+   │           │                │   stays      │                 │
+   │           │                │   'assessed')│                 │
+   │           │  Glove: POST /ingest ─────────┘                 │
+   │           │  (backend runs assess_session)                  │
+   │           │                                                 │
+   │           │  Glove: POST /ingest again ─────────────────────┘
+   │           │  (routed by assessment_results presence → run_exercise)
 ```
+
+The `/ingest` router keys off the presence of `assessment_results` on the
+session row, not off `status`. That invariant is immune to questionnaire
+writes arriving in between the assessment batch and the exercise batch.
 
 ## Repository Layout
 

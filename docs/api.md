@@ -76,9 +76,11 @@ The backend also accepts a wrapped form `{"answers": {...}}` for backwards compa
 **Response 200:**
 ```json
 {
-  "status": "questionnaire_done"
+  "status": "assessed"
 }
 ```
+
+The `status` field echoes the session's current lifecycle status *after* the write. In the normal app flow the questionnaire is submitted after assessment, so the response is `"assessed"`. If a questionnaire is submitted before assessment (no current app path does this), the response is `"questionnaire_done"`.
 
 ---
 

@@ -62,7 +62,7 @@ Submit the 10-question daily check-in. Called AFTER assessment, BEFORE exercise.
 
 Backend also accepts a wrapped form `{"answers": {...}}` for backwards compatibility (`handler.py:64`), but the app sends the raw object.
 
-**Response** (200): `{"status": "questionnaire_done"}`
+**Response** (200): `{"status": "<current-status>"}` — echoes the session's status *after* the write. In the app flow the questionnaire is submitted after assessment, so the response is `{"status": "assessed"}`. Backend only writes `questionnaire_done` if the current status is earlier than `assessed` (which no app path hits).
 
 ### PUT /sessions/{id}/device
 
@@ -213,12 +213,17 @@ backend auto-detects assessment vs exercise by looking at the session row:
 
 ## Status Values (Actual Backend Values)
 
+Observed in the normal app flow:
+
 - `created` — Session exists, nothing submitted yet
-- `questionnaire_done` — Patient questionnaire saved
 - `assessed` — Glove sent assessment data, results computed
 - `exercised` — Glove sent exercise data, results computed
 
-Note: Device linking does NOT change the status value. It only sets `device_id`.
+Defined but not seen in the app flow:
+
+- `questionnaire_done` — only set if a questionnaire is submitted on a session that hasn't been assessed yet. The app always shows the questionnaire after assessment, so this transition never happens in practice.
+
+Note: Device linking does NOT change the status value. It only sets `device_id`. Nothing in the system routes behavior off `status`: the app keys on `assessment_results`/`exercise_results` presence; the ingest Lambda keys on `assessment_results` presence.
 
 ## Presigned URL Mechanics
 
