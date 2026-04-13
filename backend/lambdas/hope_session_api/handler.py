@@ -12,6 +12,21 @@ class _DecimalEncoder(json.JSONEncoder):
             return float(o)
         return super().default(o)
 
+
+def _floats_to_decimal(obj):
+    """Recursively convert floats → Decimal so DynamoDB will accept them.
+
+    The questionnaire contains floats (e.g. sleep_hours: 7.5, body_temperature: 37.0).
+    DynamoDB's TypeSerializer rejects Python float — it requires Decimal.
+    """
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, dict):
+        return {k: _floats_to_decimal(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_floats_to_decimal(v) for v in obj]
+    return obj
+
 dynamodb = boto3.resource('dynamodb')
 s3 = boto3.client('s3')
 table = dynamodb.Table('hope-sessions')
@@ -57,11 +72,12 @@ def create_session():
 
 
 def save_questionnaire(session_id, body):
+    answers = _floats_to_decimal(body.get('answers', body))
     table.update_item(
         Key={'session_id': session_id},
         UpdateExpression='SET questionnaire = :q, #s = :s',
         ExpressionAttributeNames={'#s': 'status'},
-        ExpressionAttributeValues={':q': body.get('answers', body), ':s': 'questionnaire_done'}
+        ExpressionAttributeValues={':q': answers, ':s': 'questionnaire_done'}
     )
     return respond(200, {'status': 'questionnaire_done'})
 

@@ -129,13 +129,14 @@ class TestListSessions:
 
 class TestQuestionnaire:
     def test_put_questionnaire_returns_200(self, aws_setup):
+        # Uses the wrapped {"answers": ...} form for backwards compatibility coverage.
         create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
         session_id = json.loads(create_resp['body'])['session_id']
 
         resp = aws_setup.handler(apigw_event(
             'PUT', '/sessions/{session_id}/questionnaire',
             path_params={'session_id': session_id},
-            body={'answers': {'pain_level': 3, 'stiffness': True}}
+            body={'answers': {'sleep_hours': 7.5, 'headache': False}}
         ), None)
         assert resp['statusCode'] == 200
 
@@ -146,7 +147,7 @@ class TestQuestionnaire:
         aws_setup.handler(apigw_event(
             'PUT', '/sessions/{session_id}/questionnaire',
             path_params={'session_id': session_id},
-            body={'answers': {'pain_level': 3}}
+            body={'answers': {'sleep_hours': 7.5}}
         ), None)
 
         get_resp = aws_setup.handler(apigw_event('GET', '/sessions/{session_id}',
@@ -155,17 +156,24 @@ class TestQuestionnaire:
         assert body['status'] == 'questionnaire_done'
 
     def test_put_questionnaire_accepts_raw_shape_from_app(self, aws_setup):
-        # The Flutter app sends the 4 answer fields at the top level, not
-        # wrapped in {"answers": ...}. The backend supports both shapes via
+        # The Flutter app sends the 10-question daily check-in at the top level,
+        # not wrapped in {"answers": ...}. The backend supports both shapes via
         # `body.get('answers', body)` — this test pins the raw shape.
+        # Schema comes from flutter_app/lib/screens/patient/questionnaire_screen.dart:18-39.
         create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
         session_id = json.loads(create_resp['body'])['session_id']
 
         raw_body = {
-            'pain_level': 5,
-            'stiffness': False,
-            'comments': 'Feeling okay today',
-            'goal': 'improve_grip',
+            'sleep_hours': 7.5,
+            'body_temperature': 37.0,
+            'blood_sugar': 100,
+            'blood_pressure': {'systolic': 120, 'diastolic': 80},
+            'headache': False,
+            'dizzy': False,
+            'fatigue': True,
+            'arm_pain': 3,
+            'hand_movement': True,
+            'falls_injuries': False,
         }
         resp = aws_setup.handler(apigw_event(
             'PUT', '/sessions/{session_id}/questionnaire',
