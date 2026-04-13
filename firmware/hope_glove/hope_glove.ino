@@ -98,7 +98,7 @@ Sample readSensors() {
 
   for (int i = 0; i < 2; i++) {
     int raw   = analogRead(FSR_PINS[i]);
-    int force = constrain(map(raw, FSR_MIN[i], FSR_MAX[i], 100, 0), 0, 100);
+    int force = constrain(map(raw, FSR_MIN[i], FSR_MAX[i], 0, 100), 0, 100);
     if (i == 0) s.fsr1 = force; else s.fsr2 = force;
   }
 
