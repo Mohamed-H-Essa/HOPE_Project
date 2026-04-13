@@ -82,10 +82,9 @@ def main() -> None:
     logo = pad_to_square_transparent(cropped, canvas_side=1024, logo_side=1000)
     logo.save(OUT_LOGO, "PNG", optimize=True)
 
-    # App icon (white bg, 1024, no alpha for iOS) — tighter padding
-    icon = pad_to_square(
-        cropped, bg=(255, 255, 255), padding_ratio=ICON_PADDING_RATIO
-    ).resize((1024, 1024), Image.LANCZOS)
+    # App icon (transparent bg, 1024) — OS adds its own tile; transparent avoids
+    # white letterboxing. iOS config uses background_color_ios to fill the tile.
+    icon = pad_to_square_transparent(cropped, canvas_side=1024, logo_side=1000)
     icon.save(OUT_ICON, "PNG", optimize=True)
 
     # Splash logo: transparent bg with generous breathing room
