@@ -141,9 +141,9 @@ The glove is a dumb data pipe — it sends only `device_id` and raw sensor sampl
 It has **no knowledge** of sessions, modes, or exercise names. The body must
 contain **only** `device_id` and `data` — no `type` or `phase` field.
 
-The backend auto-detects the phase from the linked session's status:
-- `status == 'assessed'` → runs exercise logic (exercise name from `assessment_results.needed_training[0]`)
-- anything else → runs assessment logic
+The backend auto-detects the phase by inspecting the linked session row:
+- `assessment_results` already present → runs exercise logic (exercise name from `assessment_results.needed_training[0]`)
+- `assessment_results` absent → runs assessment logic
 
 **Response 200 (assessment):**
 ```json

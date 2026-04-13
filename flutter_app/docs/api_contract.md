@@ -196,9 +196,9 @@ it to simulate the glove locally during development/demo.
 ```
 
 The payload is **only** `device_id` + `data`. No `type` or `phase` field. The
-backend auto-detects assessment vs exercise from the session's status:
-- `status == 'assessed'` → runs exercise logic
-- anything else → runs assessment logic
+backend auto-detects assessment vs exercise by looking at the session row:
+- `assessment_results` already present → runs exercise logic
+- `assessment_results` absent → runs assessment logic
 
 **Sensor ranges.** Canonical table lives in [`firmware/FIRMWARE.md`](../../firmware/FIRMWARE.md#sensors); reproduced here for convenience.
 

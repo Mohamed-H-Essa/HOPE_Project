@@ -31,11 +31,16 @@ def handler(event, context):
 
     The glove sends only its device_id and raw sensor data — it has no
     knowledge of sessions, modes, or exercise names. This handler looks up
-    the active session for the device and decides what to do based on the
-    session's current status:
+    the active session for the device and routes by DATA PRESENCE, not by
+    status string:
 
-      - status == 'assessed'  → exercise phase (uses first item in needed_training)
-      - anything else         → assessment phase
+      - assessment_results absent → assessment phase (stores results)
+      - assessment_results present → exercise phase (uses first item in
+                                     needed_training as the exercise name)
+
+    Routing by data presence rather than `status` avoids a race: the patient
+    can submit the post-assessment questionnaire between batches, which
+    otherwise would overwrite the lifecycle marker.
     """
     body = json.loads(event.get('body') or '{}')
     device_id = body.get('device_id')
@@ -74,18 +79,20 @@ def handler(event, context):
     # (e.g., still showing 'questionnaire_done' when the status is already 'assessed').
     fresh = table.get_item(Key={'session_id': session_id}, ConsistentRead=True)
     session = fresh.get('Item', session)
-    session_status = session.get('status', '')
 
-    # Route based on session status — the glove never needs to know which phase it is in
-    if session_status == 'assessed':
-        # Assessment already done: run the exercise phase.
-        # Determine exercise name from the session's stored needed_training list.
-        ar = session.get('assessment_results', {})
-        needed = ar.get('needed_training', [])
+    # Route by DATA presence, not by the status string. Status can be overwritten
+    # by PUT /questionnaire to 'questionnaire_done' in between the assessment and
+    # exercise ingest batches; if we routed on status we'd mistake the exercise
+    # batch for a retry-assessment and overwrite assessment_results. Using the
+    # presence of assessment_results is the canonical invariant: if assessment
+    # results exist, the glove is posting exercise data. The glove itself has
+    # no knowledge of phase.
+    ar = session.get('assessment_results')
+    if ar:
+        needed = ar.get('needed_training', []) if isinstance(ar, dict) else []
         exercise_name = needed[0] if needed else 'Unknown'
         return process_exercise(session_id, sensor_data, exercise_name)
     else:
-        # Not yet assessed (created / questionnaire_done / or retry): run assessment.
         return process_assessment(session_id, sensor_data)
 
 

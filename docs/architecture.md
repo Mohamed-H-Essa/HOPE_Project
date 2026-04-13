@@ -58,9 +58,9 @@ HOPE is a weekend demo for a smart rehabilitation glove. A patient wears an ESP3
 
 The glove has no concept of assess vs exercise. It just collects and sends sensor data.
 
-The **backend** auto-detects the phase from the session's status:
-- `status == 'assessed'` → runs exercise logic (exercise name from `needed_training[0]`)
-- anything else → runs assessment logic
+The **backend** auto-detects the phase by looking at whether the session already has assessment results:
+- `assessment_results` present on the row → runs exercise logic (exercise name from `assessment_results.needed_training[0]`)
+- `assessment_results` absent → runs assessment logic
 
 This means the firmware never needs to be updated to change the session flow. Flash once and forget.
 
@@ -102,9 +102,9 @@ Step 6: Patient exercises with glove on. Optional: Flutter app records video.
          If video: Flutter app         → POST /sessions/{id}/video-upload-url
                    Backend             ← returns presigned S3 PUT URL
                    Flutter app         → PUT video bytes to S3
-         Glove keeps POSTing to /ingest — backend sees status == 'assessed'
-         (or 'questionnaire_done' if the questionnaire was submitted),
-         runs run_exercise(data, exercise_name) → writes exercise_results to DynamoDB
+         Glove keeps POSTing to /ingest — backend sees assessment_results on the
+         session row, so it routes this batch to the exercise branch and runs
+         run_exercise(data, exercise_name) → writes exercise_results to DynamoDB
          Flutter app polls GET /sessions/{id} every 3s until exercise_results appears
 
 Step 7: Flutter app displays exercise scores
@@ -112,16 +112,15 @@ Step 7: Flutter app displays exercise scores
 
 ## Session State Machine
 
-Observed transitions in a real patient session (each set by the handler that fires):
+Observed transitions in a real patient session:
 
 ```
-created → assessed → [questionnaire_done] → exercised
+created → assessed → exercised
 ```
 
-`questionnaire_done` is optional: it only appears if the patient submits the
-questionnaire (not if they tap Skip). The `status` field in DynamoDB tracks
-this. The app uses the presence of `assessment_results` / `exercise_results`
-to drive its UI, not the status string directly.
+`status` is informational only — neither the app nor the ingest router key behavior off it. The app reads `assessment_results` / `exercise_results` on the session row; the ingest Lambda routes on `assessment_results` presence.
+
+`PUT /sessions/{id}/questionnaire` writes the answers object, but because the app always shows the questionnaire *after* assessment, by that time the status is already `assessed` — `save_questionnaire` detects this and leaves status untouched rather than regressing it. (If a client somehow submitted a questionnaire on a `created` session it would flip status to `questionnaire_done`, but no real app path does this today.)
 
 ## Polling Strategy
 

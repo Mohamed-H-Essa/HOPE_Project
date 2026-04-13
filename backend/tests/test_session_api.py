@@ -155,6 +155,48 @@ class TestQuestionnaire:
         body = json.loads(get_resp['body'])
         assert body['status'] == 'questionnaire_done'
 
+    def test_put_questionnaire_does_not_regress_status_from_assessed(self, aws_setup):
+        """Guard against the old bug where PUT /questionnaire overwrote
+        status='assessed' with 'questionnaire_done', which confused the /ingest
+        router and caused exercise data to be re-assessed.
+
+        After assessment, submitting the questionnaire must NOT move status
+        backwards — it should only write the questionnaire data and keep status
+        at 'assessed' (or wherever it already is).
+        """
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+
+        # Simulate the assessment already having happened: set status directly.
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
+        ddb.Table(TABLE_NAME).update_item(
+            Key={'session_id': session_id},
+            UpdateExpression='SET #s = :s, assessment_results = :ar',
+            ExpressionAttributeNames={'#s': 'status'},
+            ExpressionAttributeValues={
+                ':s': 'assessed',
+                ':ar': {'Reach': 'PASS', 'Grasp': 'FAIL', 'Manipulation': 'FAIL', 'Release': 'FAIL',
+                        'needed_training': ['Grasp', 'Manipulation', 'Release']},
+            },
+        )
+
+        resp = aws_setup.handler(apigw_event(
+            'PUT', '/sessions/{session_id}/questionnaire',
+            path_params={'session_id': session_id},
+            body={'sleep_hours': 7.5, 'headache': False},
+        ), None)
+        assert resp['statusCode'] == 200
+        # Response should reflect the *current* status (still 'assessed'), not regress.
+        assert json.loads(resp['body'])['status'] == 'assessed'
+
+        get_resp = aws_setup.handler(apigw_event('GET', '/sessions/{session_id}',
+                                                 path_params={'session_id': session_id}), None)
+        body = json.loads(get_resp['body'])
+        assert body['status'] == 'assessed'
+        assert body['questionnaire'] == {'sleep_hours': 7.5, 'headache': False}
+        # Crucially — assessment_results must still be there, untouched.
+        assert body['assessment_results']['Reach'] == 'PASS'
+
     def test_put_questionnaire_accepts_raw_shape_from_app(self, aws_setup):
         # The Flutter app sends the 10-question daily check-in at the top level,
         # not wrapped in {"answers": ...}. The backend supports both shapes via

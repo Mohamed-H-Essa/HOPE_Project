@@ -4,10 +4,11 @@
 //
 // REQUIRED LIBRARIES (install via Arduino IDE → Library Manager):
 //   • "MPU6050" by Electronic Cats  (also installs I2Cdev dependency)
-//   • "ArduinoJson" by Benoit Blanchon  ← NOT needed; removed
 //
 // WiFiClientSecure and HTTPClient are bundled with the ESP32
-// Arduino core — no separate install needed.
+// Arduino core — no separate install needed. We build the JSON
+// payload by hand with snprintf to avoid pulling in ArduinoJson
+// and to avoid 13 KB String alloc/free cycles per batch.
 //
 // BOARD: ESP32 Dev Module (ESP32 Arduino core 2.x)
 //
@@ -211,8 +212,14 @@ void setup() {
   Wire.begin(I2C_SDA, I2C_SCL);
   mpu.initialize();
   if (!mpu.testConnection()) {
-    Serial.println("[GLOVE] ERROR: MPU6050 not detected. Check I2C wiring (SDA=8, SCL=9).");
-    // Continue anyway — sensor data will be zeroed but the glove won't brick
+    // testConnection() is an I2C WHO_AM_I probe. On some MPU6050 boards
+    // (and certain breakouts) the probe fails even though getMotion6() still
+    // returns valid data — to verify, look at the first few batches in
+    // CloudWatch: a stationary glove should report az ≈ 16384 (1g) and the
+    // other axes near zero. If all six IMU values are 0, I2C wiring is
+    // genuinely broken; otherwise ignore this line.
+    Serial.println("[GLOVE] WARN: MPU6050 testConnection failed "
+                   "(SDA=8, SCL=9). Continuing — often a false negative.");
   } else {
     Serial.println("[GLOVE] MPU6050 OK.");
   }
@@ -221,8 +228,12 @@ void setup() {
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
-  // TLS client — global, reused across all requests
-  tlsClient.setInsecure();  // Skip cert verification — URL is hardcoded
+  // TLS client — global, reused across all requests.
+  // setInsecure() skips certificate validation. The endpoint is a pinned
+  // API Gateway URL; the ESP32 doesn't have enough flash for the AWS CA
+  // bundle and cert rotation would otherwise brick fielded devices. Safe
+  // enough for this closed-system use case.
+  tlsClient.setInsecure();
 
   // HTTPClient — persistent connection reuse to avoid TLS re-handshake every batch
   http.setReuse(true);
@@ -237,19 +248,21 @@ void setup() {
     Serial.print(".");
   }
   Serial.printf("\n[GLOVE] WiFi connected. IP: %s\n", WiFi.localIP().toString().c_str());
-  Serial.println("[GLOVE] Ready. Waiting for app to start a session...");
+  Serial.println("[GLOVE] Ready. Streaming batches to /ingest; "
+                 "backend returns 404 until the app links this device.");
 }
 
 
 // ============================================================
 // Main loop:
 //
-// The glove is dumb. It collects 100 samples and POSTs them
-// to /ingest with only its device_id.
-// The backend decides the phase from the session's status:
-//   - not yet assessed → runs assessment logic
-//   - already assessed → runs exercise logic (using the first
-//                         item from needed_training)
+// The glove is dumb. It has no buttons, no screen, no phase
+// awareness. It collects 100 samples and POSTs them to /ingest
+// with only its device_id. The backend routes the batch by
+// looking at the session row: if assessment_results is absent
+// the batch is treated as assessment data; if present it is
+// treated as exercise data (using the first item from
+// needed_training as the exercise name).
 //
 // Responses:
 //   200  → batch accepted, wait 5s then collect next batch

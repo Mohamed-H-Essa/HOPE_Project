@@ -156,7 +156,7 @@ class ApiService {
 
   // DEBUG ONLY: Simulates glove by POSTing {device_id, data:[100 samples]} to /ingest.
   // Sends only device_id + data — no type/phase field. Backend auto-detects
-  // assessment vs exercise from session status.
+  // assessment vs exercise from the session row (presence of assessment_results).
   Future<void> simulateGlove(String deviceId)
 }
 ```

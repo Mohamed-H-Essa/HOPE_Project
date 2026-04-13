@@ -516,9 +516,11 @@ def phase_5_exercise(session_id, session_data):
     print(f"{CYAN}{ARROW} Sending exercise data via /ingest...{RESET}")
     exercise_data = generate_exercise_data(exercise)
 
-    # Retry up to 4 times — DynamoDB scan uses eventually consistent reads, so the
-    # first attempt may still see the session as pre-assessed and re-run assessment.
-    # We detect this by checking whether the response contains 'exercise_results'.
+    # Retry up to 4 times against transient connection errors (Lambda cold
+    # starts, CloudFront resets). The ingest router itself uses strongly
+    # consistent reads, so DynamoDB consistency is not a concern — once the
+    # assessment batch's response has returned, the next batch will see
+    # assessment_results present and route to exercise.
     results = None
     for attempt in range(1, 5):
         try:
@@ -531,9 +533,10 @@ def phase_5_exercise(session_id, session_data):
             results = response.json()
             if 'exercise_results' in results:
                 break  # Got exercise results — success
-            # Got assessment results again — DynamoDB scan saw stale status. Wait and retry.
+            # Unexpected: assessment ran again. Shouldn't happen with the
+            # current router, but leave the retry as a safety net.
             if attempt < 4:
-                print(f"{DIM}  (retry {attempt}/4 — waiting for DynamoDB consistency...){RESET}")
+                print(f"{DIM}  (retry {attempt}/4 — unexpected assessment response){RESET}")
                 time.sleep(3)
         except Exception as e:
             # Connection errors (cold start / reset) are retryable

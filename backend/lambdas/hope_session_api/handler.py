@@ -72,12 +72,35 @@ def create_session():
 
 
 def save_questionnaire(session_id, body):
+    """Save questionnaire answers; advance status only if the session hasn't
+    progressed past it yet.
+
+    The app shows the questionnaire AFTER the assessment, so by the time this
+    runs the session's status is typically already 'assessed' or later. We must
+    NOT regress it back to 'questionnaire_done' — doing so would break any
+    consumer that treats status as a monotonic lifecycle marker. We always
+    write the questionnaire data, but leave status alone if it's already
+    'assessed' or 'exercised'.
+    """
     answers = _floats_to_decimal(body.get('answers', body))
+    # Fetch current status to decide whether to advance it.
+    current = table.get_item(Key={'session_id': session_id}, ConsistentRead=True).get('Item', {})
+    current_status = current.get('status', 'created')
+
+    if current_status in ('assessed', 'exercised'):
+        # Already past the questionnaire step in the lifecycle — update answers only.
+        table.update_item(
+            Key={'session_id': session_id},
+            UpdateExpression='SET questionnaire = :q',
+            ExpressionAttributeValues={':q': answers},
+        )
+        return respond(200, {'status': current_status})
+
     table.update_item(
         Key={'session_id': session_id},
         UpdateExpression='SET questionnaire = :q, #s = :s',
         ExpressionAttributeNames={'#s': 'status'},
-        ExpressionAttributeValues={':q': answers, ':s': 'questionnaire_done'}
+        ExpressionAttributeValues={':q': answers, ':s': 'questionnaire_done'},
     )
     return respond(200, {'status': 'questionnaire_done'})
 

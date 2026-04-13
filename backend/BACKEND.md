@@ -32,9 +32,12 @@ Payload shape (fields, ranges, units) is defined in [`firmware/FIRMWARE.md`](../
 **Routing logic inside `/ingest`:**
 1. Extract `device_id` from request body
 2. Scan DynamoDB for active session with that `device_id` (status != 'completed')
-3. If session status is `assessed` → run exercise logic
-4. Otherwise → run assessment logic
-5. Store raw sensor data in S3, update session with results
+3. Route by **data presence**, not status string:
+   - If the session row already has `assessment_results` → run exercise logic
+   - Otherwise → run assessment logic
+4. Store raw sensor data in S3, update session with results
+
+Routing on data presence (rather than the `status` string) is deliberate. The patient can submit the post-assessment questionnaire between the assessment batch and the exercise batch, which writes to the session row; keying routing off the more stable invariant (`assessment_results` exists / doesn't) avoids any status-overwrite race.
 
 ## How the Glove Finds Its Session
 
@@ -66,15 +69,20 @@ The backend scans DynamoDB: "Find session WHERE device_id = 'hope-glove-01' AND 
 Observed transitions in a real patient session:
 
 ```
-created → assessed → [questionnaire_done] → exercised
+created → assessed → exercised
 ```
 
 - `created`: Session exists, nothing else done
 - `assessed`: Assessment sensor data processed, results available
-- `questionnaire_done`: Patient submitted the questionnaire (comes AFTER assessment in the app flow; skipped entirely if the patient taps "Skip")
 - `exercised`: Exercise sensor data processed, results available
 
-Note: Device linking does NOT change status. It only sets `device_id`.
+`questionnaire_done` is a defined status but it only appears if a questionnaire is submitted *before* assessment runs, which the current app never does (it shows the form after assessment). `save_questionnaire` explicitly refuses to regress status from `assessed`/`exercised` back to `questionnaire_done` — it only updates the status when the current status is earlier in the lifecycle.
+
+Status is informational only. Nothing in the system keys behavior off it:
+- the `/ingest` router routes on `assessment_results` presence
+- the Flutter app polls for `assessment_results` / `exercise_results` fields
+
+Device linking does NOT change status. It only sets `device_id`.
 
 ## S3 Layout
 
