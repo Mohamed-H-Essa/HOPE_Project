@@ -26,6 +26,33 @@ table = dynamodb.Table(os.environ.get('TABLE', 'hope-sessions'))
 BUCKET = os.environ.get('HOPE_BUCKET', 'hope-data-placeholder')
 
 
+_REQUIRED_SAMPLE_KEYS = (
+    'time', 'flex1', 'flex2', 'fsr1', 'fsr2', 'emg',
+    'ax', 'ay', 'az', 'gx', 'gy', 'gz',
+)
+
+
+def _validate_payload(device_id, sensor_data):
+    """Lightweight shape check. Both ends are well-behaved so this only catches
+    obviously malformed payloads (string instead of number, missing keys) that
+    would otherwise crash assess_logic with a confusing 502."""
+    if not isinstance(sensor_data, list):
+        return 'sensor data must be a list of samples'
+    if not sensor_data:
+        return 'sensor data array is required'
+    sample = sensor_data[0]
+    if not isinstance(sample, dict):
+        return 'each sample must be an object'
+    missing = [k for k in _REQUIRED_SAMPLE_KEYS if k not in sample]
+    if missing:
+        return f'sample missing required keys: {missing}'
+    for k in _REQUIRED_SAMPLE_KEYS:
+        v = sample[k]
+        if not isinstance(v, (int, float)) or isinstance(v, bool):
+            return f'sample[{k!r}] must be a number, got {type(v).__name__}'
+    return None
+
+
 def handler(event, context):
     """Ingest endpoint: accepts sensor data from the ESP32 glove.
 
@@ -42,15 +69,21 @@ def handler(event, context):
     can submit the post-assessment questionnaire between batches, which
     otherwise would overwrite the lifecycle marker.
     """
-    body = json.loads(event.get('body') or '{}')
+    raw = event.get('body') or ''
+    try:
+        body = json.loads(raw) if raw.strip() else {}
+    except (ValueError, TypeError):
+        return respond(400, {'error': 'invalid_json', 'message': 'Request body must be valid JSON'})
+
     device_id = body.get('device_id')
     sensor_data = body.get('data', [])
 
     if not device_id:
         return respond(400, {'error': 'missing_device_id', 'message': 'device_id is required'})
 
-    if not sensor_data:
-        return respond(400, {'error': 'missing_data', 'message': 'sensor data array is required'})
+    err = _validate_payload(device_id, sensor_data)
+    if err:
+        return respond(400, {'error': 'invalid_payload', 'message': err})
 
     # Look up the active session for this device (status != 'completed')
     result = table.scan(
@@ -102,13 +135,22 @@ def process_assessment(session_id, sensor_data):
 
     results = assess_session(sensor_data)
 
+    # Persisted shape matches GET /sessions/{id} so clients only need to
+    # understand one schema. assessment_results merges PASS/FAIL strings with
+    # the needed_training list; features are stored as strings (DynamoDB
+    # number→Decimal coercion is fine, but we stringify for consistency with
+    # how the rest of the surface treats them).
+    assessment_results = {k: ('PASS' if v else 'FAIL') for k, v in results['results'].items()}
+    assessment_results['needed_training'] = results['needed_training']
+    assessment_features = {k: str(v) for k, v in results['features'].items()}
+
     table.update_item(
         Key={'session_id': session_id},
         UpdateExpression='SET assessment_results = :ar, assessment_features = :af, sensor_data_assess_s3 = :s3, #st = :status',
         ExpressionAttributeNames={'#st': 'status'},
         ExpressionAttributeValues={
-            ':ar': {k: ('PASS' if v else 'FAIL') for k, v in results['results'].items()} | {'needed_training': results['needed_training']},
-            ':af': {k: str(v) for k, v in results['features'].items()},
+            ':ar': assessment_results,
+            ':af': assessment_features,
             ':s3': s3_key,
             ':status': 'assessed'
         }
@@ -116,9 +158,8 @@ def process_assessment(session_id, sensor_data):
 
     return respond(200, {
         'session_id': session_id,
-        'assessment_results': results['results'],
-        'needed_training': results['needed_training'],
-        'features': results['features'],
+        'assessment_results': assessment_results,
+        'assessment_features': assessment_features,
         'status': 'assessed'
     })
 

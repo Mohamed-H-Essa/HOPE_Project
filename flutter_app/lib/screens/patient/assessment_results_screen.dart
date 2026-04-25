@@ -4,10 +4,20 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/session_provider.dart';
 import '../../widgets/language_toggle.dart';
 import '../../widgets/result_card.dart';
+import 'assess_waiting_screen.dart';
 import 'questionnaire_screen.dart';
 
 class AssessmentResultsScreen extends StatelessWidget {
   const AssessmentResultsScreen({super.key});
+
+  Future<void> _redo(BuildContext context) async {
+    await context.read<SessionProvider>().redoAssessment();
+    if (!context.mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AssessWaitingScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +68,14 @@ class AssessmentResultsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: Text(t.redoAssessment),
+              style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16)),
+              onPressed: () => _redo(context),
+            ),
+            const SizedBox(height: 8),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16)),

@@ -24,8 +24,13 @@ class _SessionListScreenState extends State<SessionListScreen> {
 
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'exercised':
       case 'completed':
         return Colors.green;
+      case 'assessed':
+      case 'questionnaire_done':
+        return Colors.teal;
+      case 'created':
       case 'in_progress':
         return Colors.orange;
       default:
@@ -35,12 +40,20 @@ class _SessionListScreenState extends State<SessionListScreen> {
 
   String _statusLabel(AppLocalizations t, String status) {
     switch (status.toLowerCase()) {
+      case 'created':
+        return t.statusCreated;
+      case 'questionnaire_done':
+        return t.statusQuestionnaireDone;
+      case 'assessed':
+        return t.statusAssessed;
+      case 'exercised':
+        return t.statusExercised;
       case 'completed':
         return t.statusCompleted;
       case 'in_progress':
         return t.statusInProgress;
       default:
-        return status;
+        return t.statusUnknown;
     }
   }
 

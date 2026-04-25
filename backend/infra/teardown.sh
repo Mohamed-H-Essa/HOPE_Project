@@ -8,7 +8,7 @@
 
 set -e
 
-REGION="${REGION:-us-east-1}"
+REGION="${REGION:-eu-west-3}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --region "$REGION")
 BUCKET="hope-data-${ACCOUNT_ID}"
 TABLE="hope-sessions"

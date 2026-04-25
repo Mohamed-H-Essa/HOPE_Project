@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/session_provider.dart';
+import '../../widgets/error_snackbar.dart';
 import '../../widgets/language_toggle.dart';
-import 'device_link_screen.dart';
+import 'assess_waiting_screen.dart';
 
 class SessionStartScreen extends StatelessWidget {
   const SessionStartScreen({super.key});
@@ -15,15 +16,15 @@ class SessionStartScreen extends StatelessWidget {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (provider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.errorMessage!)),
-        );
+        showSessionError(context, provider.errorMessage);
         provider.clearError();
       }
-      if (provider.state == SessionState.linkingDevice) {
+      // The device is now auto-linked inside startSession(), so we go straight
+      // to the assessment-waiting screen once the session is ready.
+      if (provider.state == SessionState.waitingForAssessment) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DeviceLinkScreen()),
+          MaterialPageRoute(builder: (_) => const AssessWaitingScreen()),
         );
       }
     });

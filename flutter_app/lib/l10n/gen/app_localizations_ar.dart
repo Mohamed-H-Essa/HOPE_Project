@@ -256,10 +256,105 @@ class AppLocalizationsAr extends AppLocalizations {
   String get fail => 'فشل';
 
   @override
+  String get statusCreated => 'تم الإنشاء';
+
+  @override
+  String get statusQuestionnaireDone => 'تم الاستبيان';
+
+  @override
+  String get statusAssessed => 'تم التقييم';
+
+  @override
+  String get statusExercised => 'تم التمرين';
+
+  @override
   String get statusCompleted => 'مكتمل';
 
   @override
   String get statusInProgress => 'قيد التقدم';
+
+  @override
+  String get statusUnknown => 'غير معروف';
+
+  @override
+  String get redoAssessment => 'إعادة التقييم';
+
+  @override
+  String get deleteSession => 'حذف الجلسة';
+
+  @override
+  String get deleteSessionConfirmTitle => 'حذف هذه الجلسة؟';
+
+  @override
+  String get deleteSessionConfirmBody =>
+      'سيؤدي هذا إلى إزالة الجلسة وبيانات الحساسات وأي فيديو تم رفعه. لا يمكن التراجع عن هذا الإجراء.';
+
+  @override
+  String get delete => 'حذف';
+
+  @override
+  String get cancel => 'إلغاء';
+
+  @override
+  String get deletedConfirm => 'تم حذف الجلسة';
+
+  @override
+  String get noInternet =>
+      'لا يوجد اتصال بالإنترنت. تحقق من الشبكة ثم حاول مرة أخرى.';
+
+  @override
+  String get recordVideo => 'تسجيل فيديو';
+
+  @override
+  String get videoRecording => 'يسجل…';
+
+  @override
+  String get stopRecording => 'إيقاف';
+
+  @override
+  String get uploadingVideo => 'جارٍ رفع الفيديو…';
+
+  @override
+  String get videoUploaded => 'تم رفع الفيديو';
+
+  @override
+  String get videoUploadFailed => 'فشل رفع الفيديو';
+
+  @override
+  String get labelSleepHours => 'ساعات النوم';
+
+  @override
+  String get labelBodyTemperature => 'حرارة الجسم (°م)';
+
+  @override
+  String get labelBloodSugar => 'سكر الدم (ملغ/دل)';
+
+  @override
+  String get labelBloodPressure => 'ضغط الدم';
+
+  @override
+  String get labelHeadache => 'صداع';
+
+  @override
+  String get labelDizzy => 'دوار';
+
+  @override
+  String get labelFatigue => 'إرهاق';
+
+  @override
+  String get labelArmPain => 'ألم الذراع/اليد';
+
+  @override
+  String get labelHandMovement => 'حركة اليد طبيعية';
+
+  @override
+  String get labelFallsInjuries => 'سقوط/إصابات منذ الجلسة الأخيرة';
+
+  @override
+  String get questionnaireSkipped => 'تم التخطي';
+
+  @override
+  String get questionnaireNotFilled => 'لم يتم التعبئة';
 
   @override
   String get languageToggleTooltip => 'تغيير اللغة';

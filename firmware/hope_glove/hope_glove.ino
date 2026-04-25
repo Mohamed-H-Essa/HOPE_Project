@@ -32,7 +32,7 @@ const char* WIFI_PASSWORD = "YOUR_PASSWORD";
 const char* DEVICE_ID  = "hope-glove-01";
 
 // Full URL to the /ingest endpoint. Only changes if you run teardown.sh and redeploy.
-const char* INGEST_URL = "https://unj4s6yf6b.execute-api.us-east-1.amazonaws.com/prod/ingest";
+const char* INGEST_URL = "https://jk7o08xdb6.execute-api.eu-west-3.amazonaws.com/prod/ingest";
 // ============================================================
 
 // ===== I2C pins for MPU6050 =====

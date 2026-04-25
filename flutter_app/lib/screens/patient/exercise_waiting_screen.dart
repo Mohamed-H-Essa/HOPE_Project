@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/session_provider.dart';
+import '../../widgets/error_snackbar.dart';
 import '../../widgets/language_toggle.dart';
+import '../../widgets/video_recorder_widget.dart';
 import 'exercise_results_screen.dart';
 
 class ExerciseWaitingScreen extends StatefulWidget {
@@ -32,9 +34,7 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (provider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.errorMessage!)),
-        );
+        showSessionError(context, provider.errorMessage);
         provider.clearError();
       }
       if (provider.state == SessionState.exerciseDone && !_navigated) {
@@ -51,26 +51,27 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
         title: Text(t.exercise),
         actions: const [LanguageToggle()],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Icon(Icons.fitness_center, size: 64, color: Colors.teal),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               t.exerciseLabel(exerciseName),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               t.exerciseDesc,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.grey),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+            const VideoRecorderWidget(),
+            const SizedBox(height: 16),
             if (_polling) ...[
               const Center(child: CircularProgressIndicator()),
               const SizedBox(height: 16),
@@ -88,9 +89,9 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
                 ),
                 onPressed: _startPolling,
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             const Divider(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               t.noGloveSimulate,
               style: const TextStyle(color: Colors.grey, fontSize: 13),
@@ -99,15 +100,14 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
             provider.isSimulating
                 ? const SizedBox(
                     height: 36,
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)),
                   )
                 : OutlinedButton.icon(
                     icon: const Icon(Icons.science_outlined),
                     label: Text(t.simulateGloveExercise),
                     onPressed: () {
-                      context
-                          .read<SessionProvider>()
-                          .simulateGlove();
+                      context.read<SessionProvider>().simulateGlove();
                       if (!_polling) _startPolling();
                     },
                   ),

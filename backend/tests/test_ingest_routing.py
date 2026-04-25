@@ -159,3 +159,73 @@ class TestIngestRouting:
         # Fetch the row and confirm original assessment_results are intact.
         item = table.get_item(Key={'session_id': sid}).get('Item', {})
         assert item['assessment_results']['Reach'] == 'PASS'
+
+
+class TestIngestResponseShape:
+    """The /ingest response shape was previously inconsistent with GET /sessions/{id}.
+    /ingest returned `{Reach: bool}` and `needed_training` at top level; GET returned
+    PASS/FAIL strings merged with `needed_training`. Now both shapes match.
+    """
+
+    def test_assessment_response_uses_pass_fail_strings(self, ingest_setup):
+        handler_mod, table, _s3 = ingest_setup
+        sid = 'shape-1'
+        _put_session(table, sid, status='created', device_id=DEVICE_ID)
+        resp = handler_mod.handler(_ingest_event(
+            {'device_id': DEVICE_ID, 'data': _sample_batch(100)}
+        ), None)
+        ar = json.loads(resp['body'])['assessment_results']
+        # All values (except needed_training list) must be the strings 'PASS' or 'FAIL'.
+        for key, val in ar.items():
+            if key == 'needed_training':
+                assert isinstance(val, list)
+            else:
+                assert val in ('PASS', 'FAIL'), f'{key}={val!r}'
+
+    def test_assessment_response_merges_needed_training(self, ingest_setup):
+        handler_mod, table, _s3 = ingest_setup
+        sid = 'shape-2'
+        _put_session(table, sid, status='created', device_id=DEVICE_ID)
+        resp = handler_mod.handler(_ingest_event(
+            {'device_id': DEVICE_ID, 'data': _sample_batch(100)}
+        ), None)
+        body = json.loads(resp['body'])
+        # needed_training is INSIDE assessment_results (matching GET shape), not top-level.
+        assert 'needed_training' in body['assessment_results']
+        assert 'needed_training' not in body
+
+
+class TestIngestValidation:
+    def test_invalid_json_body_returns_400(self, ingest_setup):
+        handler_mod, _table, _s3 = ingest_setup
+        resp = handler_mod.handler({'body': 'not json'}, None)
+        assert resp['statusCode'] == 400
+
+    def test_string_field_returns_400_not_502(self, ingest_setup):
+        """Pre-fix, a sample with `fsr1: "high"` caused an unhandled exception
+        deep in assess_logic. The validator now catches this at the boundary."""
+        handler_mod, table, _s3 = ingest_setup
+        sid = 'val-1'
+        _put_session(table, sid, status='created', device_id=DEVICE_ID)
+        bad_sample = {
+            'time': 0,
+            'flex1': 40, 'flex2': 35,
+            'fsr1': 'high', 'fsr2': 45,  # type error
+            'emg': 300,
+            'ax': 0, 'ay': 0, 'az': 16000,
+            'gx': 0, 'gy': 0, 'gz': 0,
+        }
+        resp = handler_mod.handler(_ingest_event(
+            {'device_id': DEVICE_ID, 'data': [bad_sample]}
+        ), None)
+        assert resp['statusCode'] == 400
+        assert 'invalid_payload' in resp['body']
+
+    def test_missing_keys_returns_400(self, ingest_setup):
+        handler_mod, table, _s3 = ingest_setup
+        sid = 'val-2'
+        _put_session(table, sid, status='created', device_id=DEVICE_ID)
+        resp = handler_mod.handler(_ingest_event(
+            {'device_id': DEVICE_ID, 'data': [{'time': 0, 'flex1': 10}]}
+        ), None)
+        assert resp['statusCode'] == 400

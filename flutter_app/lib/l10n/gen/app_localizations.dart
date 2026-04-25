@@ -560,6 +560,30 @@ abstract class AppLocalizations {
   /// **'FAIL'**
   String get fail;
 
+  /// No description provided for @statusCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'created'**
+  String get statusCreated;
+
+  /// No description provided for @statusQuestionnaireDone.
+  ///
+  /// In en, this message translates to:
+  /// **'questionnaire done'**
+  String get statusQuestionnaireDone;
+
+  /// No description provided for @statusAssessed.
+  ///
+  /// In en, this message translates to:
+  /// **'assessed'**
+  String get statusAssessed;
+
+  /// No description provided for @statusExercised.
+  ///
+  /// In en, this message translates to:
+  /// **'exercised'**
+  String get statusExercised;
+
   /// No description provided for @statusCompleted.
   ///
   /// In en, this message translates to:
@@ -569,8 +593,170 @@ abstract class AppLocalizations {
   /// No description provided for @statusInProgress.
   ///
   /// In en, this message translates to:
-  /// **'in_progress'**
+  /// **'in progress'**
   String get statusInProgress;
+
+  /// No description provided for @statusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'unknown'**
+  String get statusUnknown;
+
+  /// No description provided for @redoAssessment.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo Assessment'**
+  String get redoAssessment;
+
+  /// No description provided for @deleteSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Session'**
+  String get deleteSession;
+
+  /// No description provided for @deleteSessionConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this session?'**
+  String get deleteSessionConfirmTitle;
+
+  /// No description provided for @deleteSessionConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove the session, its sensor data, and any uploaded video. This cannot be undone.'**
+  String get deleteSessionConfirmBody;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @deletedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Session deleted'**
+  String get deletedConfirm;
+
+  /// No description provided for @noInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have internet. Check your connection and try again.'**
+  String get noInternet;
+
+  /// No description provided for @recordVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Video'**
+  String get recordVideo;
+
+  /// No description provided for @videoRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording…'**
+  String get videoRecording;
+
+  /// No description provided for @stopRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stopRecording;
+
+  /// No description provided for @uploadingVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading video…'**
+  String get uploadingVideo;
+
+  /// No description provided for @videoUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Video uploaded'**
+  String get videoUploaded;
+
+  /// No description provided for @videoUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Video upload failed'**
+  String get videoUploadFailed;
+
+  /// No description provided for @labelSleepHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep (hours)'**
+  String get labelSleepHours;
+
+  /// No description provided for @labelBodyTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Body temperature (°C)'**
+  String get labelBodyTemperature;
+
+  /// No description provided for @labelBloodSugar.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood sugar (mg/dL)'**
+  String get labelBloodSugar;
+
+  /// No description provided for @labelBloodPressure.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood pressure'**
+  String get labelBloodPressure;
+
+  /// No description provided for @labelHeadache.
+  ///
+  /// In en, this message translates to:
+  /// **'Headache'**
+  String get labelHeadache;
+
+  /// No description provided for @labelDizzy.
+  ///
+  /// In en, this message translates to:
+  /// **'Dizziness'**
+  String get labelDizzy;
+
+  /// No description provided for @labelFatigue.
+  ///
+  /// In en, this message translates to:
+  /// **'Fatigue'**
+  String get labelFatigue;
+
+  /// No description provided for @labelArmPain.
+  ///
+  /// In en, this message translates to:
+  /// **'Arm/hand pain'**
+  String get labelArmPain;
+
+  /// No description provided for @labelHandMovement.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand movement OK'**
+  String get labelHandMovement;
+
+  /// No description provided for @labelFallsInjuries.
+  ///
+  /// In en, this message translates to:
+  /// **'Falls/injuries since last session'**
+  String get labelFallsInjuries;
+
+  /// No description provided for @questionnaireSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get questionnaireSkipped;
+
+  /// No description provided for @questionnaireNotFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not filled'**
+  String get questionnaireNotFilled;
 
   /// No description provided for @languageToggleTooltip.
   ///

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/session_provider.dart';
+import '../../widgets/error_snackbar.dart';
 import '../../widgets/language_toggle.dart';
 import 'assessment_results_screen.dart';
 
@@ -30,9 +31,7 @@ class _AssessWaitingScreenState extends State<AssessWaitingScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (provider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.errorMessage!)),
-        );
+        showSessionError(context, provider.errorMessage);
         provider.clearError();
       }
       if (provider.state == SessionState.assessmentDone && !_navigated) {

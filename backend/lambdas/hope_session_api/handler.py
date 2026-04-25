@@ -27,8 +27,10 @@ def _floats_to_decimal(obj):
         return [_floats_to_decimal(v) for v in obj]
     return obj
 
+_S3_REGION = os.environ.get('HOPE_S3_REGION', os.environ.get('AWS_REGION', 'eu-west-3'))
 dynamodb = boto3.resource('dynamodb')
-s3 = boto3.client('s3')
+s3 = boto3.client('s3', region_name=_S3_REGION,
+                  config=boto3.session.Config(signature_version='s3v4'))
 table = dynamodb.Table('hope-sessions')
 BUCKET = os.environ.get('HOPE_BUCKET', 'hope-data-placeholder')
 
@@ -37,7 +39,11 @@ def handler(event, context):
     method = event['httpMethod']
     path = event['resource']
     path_params = event.get('pathParameters') or {}
-    body = json.loads(event.get('body') or '{}')
+    raw_body = event.get('body') or ''
+    try:
+        body = json.loads(raw_body) if raw_body.strip() else {}
+    except (ValueError, TypeError):
+        return respond(400, {'error': 'invalid_json', 'message': 'Request body must be valid JSON or empty'})
 
     if method == 'POST' and path == '/sessions':
         return create_session()
@@ -57,7 +63,18 @@ def handler(event, context):
     elif method == 'GET' and path == '/sessions/{session_id}':
         return get_session(path_params['session_id'])
 
+    elif method == 'DELETE' and path == '/sessions/{session_id}':
+        return delete_session(path_params['session_id'])
+
+    elif method == 'POST' and path == '/sessions/{session_id}/redo-assessment':
+        return redo_assessment(path_params['session_id'])
+
     return respond(404, {'error': 'not_found'})
+
+
+def _session_exists(session_id):
+    """Return True iff a row with this session_id exists in DynamoDB."""
+    return 'Item' in table.get_item(Key={'session_id': session_id}, ConsistentRead=True)
 
 
 def create_session():
@@ -106,6 +123,8 @@ def save_questionnaire(session_id, body):
 
 
 def get_video_upload_url(session_id):
+    if not _session_exists(session_id):
+        return respond(404, {'error': 'session_not_found', 'message': f'No session with id {session_id}'})
     key = f'videos/{session_id}/video.mp4'
     url = s3.generate_presigned_url(
         'put_object',
@@ -121,10 +140,19 @@ def get_video_upload_url(session_id):
 
 
 def link_device(session_id, body):
-    """Link a device to this session for the /ingest endpoint."""
+    """Link a device to this session for the /ingest endpoint.
+
+    Single-glove demo: linking the same device to a fresh session orphans the
+    previous one (the user can always restart). The /ingest router picks the
+    newest session by created_at so the older orphaned session is naturally
+    ignored — we don't actively rewrite it.
+    """
     device_id = body.get('device_id')
     if not device_id:
         return respond(400, {'error': 'missing_device_id', 'message': 'device_id is required'})
+
+    if not _session_exists(session_id):
+        return respond(404, {'error': 'session_not_found', 'message': f'No session with id {session_id}'})
 
     table.update_item(
         Key={'session_id': session_id},
@@ -139,14 +167,15 @@ def list_sessions():
     sessions = sorted(result.get('Items', []), key=lambda x: x.get('created_at', ''), reverse=True)
     summaries = []
     for s in sessions:
-        ar = s.get('assessment_results', {})
-        er = s.get('exercise_results', {})
+        ar = s.get('assessment_results') or {}
+        er = s.get('exercise_results') or {}
         passed = sum(1 for v in ar.values() if v == 'PASS' and isinstance(v, str))
         total = len([k for k in ar if k not in ('needed_training', 'features')])
         summaries.append({
             'session_id': s['session_id'],
-            'created_at': s['created_at'],
+            'created_at': s.get('created_at', ''),
             'status': s.get('status', 'created'),
+            'has_video': bool(s.get('video_s3_key')),
             'assessment_summary': {
                 'passed': passed,
                 'total': total,
@@ -155,6 +184,50 @@ def list_sessions():
             'exercise_overall_percent': er.get('overall_percent') if er else None
         })
     return respond(200, {'sessions': summaries})
+
+
+def redo_assessment(session_id):
+    """Clear assessment_results so the next /ingest batch is treated as a fresh
+    assessment instead of an exercise. Also clears any exercise_results that
+    might have been written. Status is reset to 'created'.
+
+    The Flutter app calls this from the assessment-results screen when the user
+    taps "redo". The /ingest router keys on presence of assessment_results, so
+    removing the attribute is sufficient — no other state needs to be reset.
+    """
+    if not _session_exists(session_id):
+        return respond(404, {'error': 'session_not_found', 'message': f'No session with id {session_id}'})
+
+    table.update_item(
+        Key={'session_id': session_id},
+        UpdateExpression='REMOVE assessment_results, assessment_features, exercise_results, sensor_data_assess_s3, sensor_data_exercise_s3 SET #s = :s',
+        ExpressionAttributeNames={'#s': 'status'},
+        ExpressionAttributeValues={':s': 'created'},
+    )
+    return respond(200, {'status': 'created', 'session_id': session_id})
+
+
+def delete_session(session_id):
+    """Hard-delete a session row + its S3 artifacts.
+
+    Practitioner-mode action. There is no archive/soft-delete — this is a
+    single-user demo and the practitioner has full authority over the log.
+    """
+    item = table.get_item(Key={'session_id': session_id}, ConsistentRead=True).get('Item')
+    if not item:
+        return respond(404, {'error': 'session_not_found', 'message': f'No session with id {session_id}'})
+
+    for key in (item.get('sensor_data_assess_s3'),
+                item.get('sensor_data_exercise_s3'),
+                item.get('video_s3_key')):
+        if key:
+            try:
+                s3.delete_object(Bucket=BUCKET, Key=key)
+            except Exception:
+                pass
+
+    table.delete_item(Key={'session_id': session_id})
+    return respond(200, {'status': 'deleted', 'session_id': session_id})
 
 
 def get_session(session_id):

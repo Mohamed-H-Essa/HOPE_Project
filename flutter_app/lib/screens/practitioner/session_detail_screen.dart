@@ -13,13 +13,51 @@ class SessionDetailScreen extends StatelessWidget {
 
   const SessionDetailScreen({super.key, required this.sessionId});
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final t = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.deleteSessionConfirmTitle),
+        content: Text(t.deleteSessionConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t.cancel),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(t.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final ok =
+        await context.read<SessionProvider>().deleteSession(sessionId);
+    if (!context.mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(t.deletedConfirm)));
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(t.sessionDetail),
-        actions: const [LanguageToggle()],
+        actions: [
+          IconButton(
+            tooltip: t.deleteSession,
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _confirmDelete(context),
+          ),
+          const LanguageToggle(),
+        ],
       ),
       body: FutureBuilder<Session?>(
         future: context.read<SessionProvider>().loadSessionDetail(sessionId),
@@ -121,6 +159,42 @@ class _InfoTab extends StatelessWidget {
   final Session session;
   const _InfoTab({required this.session});
 
+  String _label(AppLocalizations t, String key) {
+    switch (key) {
+      case 'sleep_hours':
+        return t.labelSleepHours;
+      case 'body_temperature':
+        return t.labelBodyTemperature;
+      case 'blood_sugar':
+        return t.labelBloodSugar;
+      case 'blood_pressure':
+        return t.labelBloodPressure;
+      case 'headache':
+        return t.labelHeadache;
+      case 'dizzy':
+        return t.labelDizzy;
+      case 'fatigue':
+        return t.labelFatigue;
+      case 'arm_pain':
+        return t.labelArmPain;
+      case 'hand_movement':
+        return t.labelHandMovement;
+      case 'falls_injuries':
+        return t.labelFallsInjuries;
+      default:
+        return key;
+    }
+  }
+
+  String _formatValue(AppLocalizations t, String key, dynamic value) {
+    if (value is bool) return value ? t.yes : t.no;
+    if (key == 'blood_pressure' && value is Map) {
+      return '${value['systolic']}/${value['diastolic']}';
+    }
+    if (value is num) return value.toString();
+    return value?.toString() ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -128,12 +202,15 @@ class _InfoTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (q != null) ...[
-          Text(
-            t.questionnaire,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
+        Text(
+          t.questionnaire,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (q == null)
+          Text(t.questionnaireSkipped,
+              style: const TextStyle(color: Colors.grey))
+        else
           ...q.entries.map(
             (e) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -141,19 +218,18 @@ class _InfoTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    width: 140,
+                    width: 160,
                     child: Text(
-                      e.key,
+                      _label(t, e.key),
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
-                  Expanded(child: Text(e.value.toString())),
+                  Expanded(child: Text(_formatValue(t, e.key, e.value))),
                 ],
               ),
             ),
           ),
-          const Divider(height: 32),
-        ],
+        const Divider(height: 32),
         if (session.videoUrl != null) ...[
           Text(
             t.sessionVideo,

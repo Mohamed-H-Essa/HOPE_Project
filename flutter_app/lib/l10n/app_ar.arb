@@ -93,8 +93,43 @@
   "pass": "ناجح",
   "fail": "فشل",
 
+  "statusCreated": "تم الإنشاء",
+  "statusQuestionnaireDone": "تم الاستبيان",
+  "statusAssessed": "تم التقييم",
+  "statusExercised": "تم التمرين",
   "statusCompleted": "مكتمل",
   "statusInProgress": "قيد التقدم",
+  "statusUnknown": "غير معروف",
+
+  "redoAssessment": "إعادة التقييم",
+  "deleteSession": "حذف الجلسة",
+  "deleteSessionConfirmTitle": "حذف هذه الجلسة؟",
+  "deleteSessionConfirmBody": "سيؤدي هذا إلى إزالة الجلسة وبيانات الحساسات وأي فيديو تم رفعه. لا يمكن التراجع عن هذا الإجراء.",
+  "delete": "حذف",
+  "cancel": "إلغاء",
+  "deletedConfirm": "تم حذف الجلسة",
+
+  "noInternet": "لا يوجد اتصال بالإنترنت. تحقق من الشبكة ثم حاول مرة أخرى.",
+
+  "recordVideo": "تسجيل فيديو",
+  "videoRecording": "يسجل…",
+  "stopRecording": "إيقاف",
+  "uploadingVideo": "جارٍ رفع الفيديو…",
+  "videoUploaded": "تم رفع الفيديو",
+  "videoUploadFailed": "فشل رفع الفيديو",
+
+  "labelSleepHours": "ساعات النوم",
+  "labelBodyTemperature": "حرارة الجسم (°م)",
+  "labelBloodSugar": "سكر الدم (ملغ/دل)",
+  "labelBloodPressure": "ضغط الدم",
+  "labelHeadache": "صداع",
+  "labelDizzy": "دوار",
+  "labelFatigue": "إرهاق",
+  "labelArmPain": "ألم الذراع/اليد",
+  "labelHandMovement": "حركة اليد طبيعية",
+  "labelFallsInjuries": "سقوط/إصابات منذ الجلسة الأخيرة",
+  "questionnaireSkipped": "تم التخطي",
+  "questionnaireNotFilled": "لم يتم التعبئة",
 
   "languageToggleTooltip": "تغيير اللغة"
 }

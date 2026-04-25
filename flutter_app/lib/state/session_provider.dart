@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import '../config.dart';
 import '../models/session.dart';
 import '../services/api_service.dart';
 import '../services/video_service.dart';
@@ -28,11 +29,16 @@ class SessionProvider extends ChangeNotifier {
   SessionState _state = SessionState.idle;
   Session? _currentSession;
   String? _errorMessage;
+  // Sentinel values for errors that the UI should localize. The raw
+  // _errorMessage carries either a sentinel here or a fallback string.
+  static const String errorNoNetwork = '__no_network__';
   Timer? _pollingTimer;
   int _pollCount = 0;
 
-  static const int _maxPolls = 60; // 3 minutes at 3s intervals
-  static const Duration _pollInterval = Duration(seconds: 3);
+  // /ingest is synchronous and finishes in ~6s. Poll fast for snappy UX,
+  // but cap at 60s — past that, the glove is almost certainly not sending.
+  static const int _maxPolls = 60; // 60 seconds at 1s intervals
+  static const Duration _pollInterval = Duration(seconds: 1);
 
   SessionProvider({DebugLogStore? logStore})
       : logStore = logStore ?? DebugLogStore() {
@@ -69,8 +75,15 @@ class SessionProvider extends ChangeNotifier {
     _setState(SessionState.creatingSession);
     try {
       final sessionId = await _api.createSession();
-      _currentSession = await _api.getSession(sessionId);
+      // Single-glove demo: link the hardcoded device automatically. The user
+      // never picks a device — the firmware's DEVICE_ID matches defaultDeviceId.
       _setState(SessionState.linkingDevice);
+      await _api.linkDevice(sessionId, defaultDeviceId);
+      _currentSession = await _api.getSession(sessionId);
+      _setState(SessionState.waitingForAssessment);
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
+      _setState(SessionState.idle);
     } on ApiException catch (e) {
       _errorMessage = e.message;
       _setState(SessionState.idle);
@@ -85,6 +98,9 @@ class SessionProvider extends ChangeNotifier {
     try {
       await _api.submitQuestionnaire(_currentSession!.sessionId, answers);
       _setState(SessionState.waitingForExercise);
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
+      notifyListeners();
     } on ApiException catch (e) {
       _errorMessage = e.message;
       notifyListeners();
@@ -98,18 +114,45 @@ class SessionProvider extends ChangeNotifier {
     _setState(SessionState.waitingForExercise);
   }
 
-  Future<void> linkDevice(String deviceId) async {
+  Future<void> redoAssessment() async {
     if (_currentSession == null) return;
+    _pollingTimer?.cancel();
+    _pollCount = 0;
     try {
-      await _api.linkDevice(_currentSession!.sessionId, deviceId);
+      await _api.redoAssessment(_currentSession!.sessionId);
       _currentSession = await _api.getSession(_currentSession!.sessionId);
       _setState(SessionState.waitingForAssessment);
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
+      notifyListeners();
     } on ApiException catch (e) {
       _errorMessage = e.message;
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Failed to link device';
+      _errorMessage = 'Failed to restart assessment';
       notifyListeners();
+    }
+  }
+
+  Future<bool> deleteSession(String sessionId) async {
+    try {
+      await _api.deleteSession(sessionId);
+      _sessionHistory =
+          _sessionHistory.where((s) => s.sessionId != sessionId).toList();
+      notifyListeners();
+      return true;
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
+      notifyListeners();
+      return false;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Failed to delete session';
+      notifyListeners();
+      return false;
     }
   }
 
@@ -175,18 +218,25 @@ class SessionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> uploadSessionVideo(File videoFile) async {
-    if (_currentSession == null) return;
+  Future<bool> uploadSessionVideo(File videoFile) async {
+    if (_currentSession == null) return false;
     try {
       final uploadUrl = await _api.getVideoUploadUrl(_currentSession!.sessionId);
       await _video.uploadVideoWithUrl(uploadUrl, videoFile);
       AppLogger.instance.logInfo('Video uploaded successfully');
+      return true;
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
+      notifyListeners();
+      return false;
     } on ApiException catch (e) {
       _errorMessage = e.message;
       notifyListeners();
+      return false;
     } catch (e) {
       _errorMessage = 'Failed to upload video';
       notifyListeners();
+      return false;
     }
   }
 
@@ -205,6 +255,8 @@ class SessionProvider extends ChangeNotifier {
     try {
       await _api.simulateGlove(deviceId);
       AppLogger.instance.logInfo('Glove simulated for device $deviceId');
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
     } on ApiException catch (e) {
       _errorMessage = e.message;
     } catch (e) {
@@ -223,6 +275,9 @@ class SessionProvider extends ChangeNotifier {
   Future<void> loadSessionHistory() async {
     try {
       _sessionHistory = await _api.listSessions();
+      notifyListeners();
+    } on NoNetworkException {
+      _errorMessage = errorNoNetwork;
       notifyListeners();
     } on ApiException catch (e) {
       _errorMessage = e.message;

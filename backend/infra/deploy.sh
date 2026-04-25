@@ -5,7 +5,7 @@
 
 set -e
 
-REGION="${REGION:-us-east-1}"
+REGION="${REGION:-eu-west-3}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --region "$REGION")
 BUCKET="hope-data-${ACCOUNT_ID}"
 TABLE="hope-sessions"
@@ -123,10 +123,10 @@ deploy_lambda() {
     sleep 5
   done
 
-  # Set environment variable for bucket + table
+  # Set environment variable for bucket + table + S3 region
   aws lambda update-function-configuration \
     --function-name "$NAME" \
-    --environment "Variables={HOPE_BUCKET=${BUCKET},TABLE=${TABLE}}" \
+    --environment "Variables={HOPE_BUCKET=${BUCKET},TABLE=${TABLE},HOPE_S3_REGION=${REGION}}" \
     --region "$REGION" > /dev/null
 }
 
@@ -232,7 +232,8 @@ add_method "$SESSIONS_ID" "GET"  "hope_session_api"
 
 # /sessions/{session_id}
 SESSION_ID_RES=$(get_or_create_resource "$SESSIONS_ID" "{session_id}")
-add_method "$SESSION_ID_RES" "GET" "hope_session_api"
+add_method "$SESSION_ID_RES" "GET"    "hope_session_api"
+add_method "$SESSION_ID_RES" "DELETE" "hope_session_api"
 
 # /sessions/{session_id}/questionnaire
 QUEST_ID=$(get_or_create_resource "$SESSION_ID_RES" "questionnaire")
@@ -245,6 +246,10 @@ add_method "$VIDEO_ID" "POST" "hope_session_api"
 # /sessions/{session_id}/device
 DEVICE_RES=$(get_or_create_resource "$SESSION_ID_RES" "device")
 add_method "$DEVICE_RES" "PUT" "hope_session_api"
+
+# /sessions/{session_id}/redo-assessment
+REDO_RES=$(get_or_create_resource "$SESSION_ID_RES" "redo-assessment")
+add_method "$REDO_RES" "POST" "hope_session_api"
 
 # /ingest — the single endpoint the ESP32 glove POSTs all sensor data to
 INGEST_ID=$(get_or_create_resource "$ROOT_ID" "ingest")

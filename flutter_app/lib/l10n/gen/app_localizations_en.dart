@@ -258,10 +258,105 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fail => 'FAIL';
 
   @override
+  String get statusCreated => 'created';
+
+  @override
+  String get statusQuestionnaireDone => 'questionnaire done';
+
+  @override
+  String get statusAssessed => 'assessed';
+
+  @override
+  String get statusExercised => 'exercised';
+
+  @override
   String get statusCompleted => 'completed';
 
   @override
-  String get statusInProgress => 'in_progress';
+  String get statusInProgress => 'in progress';
+
+  @override
+  String get statusUnknown => 'unknown';
+
+  @override
+  String get redoAssessment => 'Redo Assessment';
+
+  @override
+  String get deleteSession => 'Delete Session';
+
+  @override
+  String get deleteSessionConfirmTitle => 'Delete this session?';
+
+  @override
+  String get deleteSessionConfirmBody =>
+      'This will remove the session, its sensor data, and any uploaded video. This cannot be undone.';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get deletedConfirm => 'Session deleted';
+
+  @override
+  String get noInternet =>
+      'You don\'t have internet. Check your connection and try again.';
+
+  @override
+  String get recordVideo => 'Record Video';
+
+  @override
+  String get videoRecording => 'Recording…';
+
+  @override
+  String get stopRecording => 'Stop';
+
+  @override
+  String get uploadingVideo => 'Uploading video…';
+
+  @override
+  String get videoUploaded => 'Video uploaded';
+
+  @override
+  String get videoUploadFailed => 'Video upload failed';
+
+  @override
+  String get labelSleepHours => 'Sleep (hours)';
+
+  @override
+  String get labelBodyTemperature => 'Body temperature (°C)';
+
+  @override
+  String get labelBloodSugar => 'Blood sugar (mg/dL)';
+
+  @override
+  String get labelBloodPressure => 'Blood pressure';
+
+  @override
+  String get labelHeadache => 'Headache';
+
+  @override
+  String get labelDizzy => 'Dizziness';
+
+  @override
+  String get labelFatigue => 'Fatigue';
+
+  @override
+  String get labelArmPain => 'Arm/hand pain';
+
+  @override
+  String get labelHandMovement => 'Hand movement OK';
+
+  @override
+  String get labelFallsInjuries => 'Falls/injuries since last session';
+
+  @override
+  String get questionnaireSkipped => 'Skipped';
+
+  @override
+  String get questionnaireNotFilled => 'Not filled';
 
   @override
   String get languageToggleTooltip => 'Change language';

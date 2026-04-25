@@ -126,8 +126,43 @@
   "pass": "PASS",
   "fail": "FAIL",
 
+  "statusCreated": "created",
+  "statusQuestionnaireDone": "questionnaire done",
+  "statusAssessed": "assessed",
+  "statusExercised": "exercised",
   "statusCompleted": "completed",
-  "statusInProgress": "in_progress",
+  "statusInProgress": "in progress",
+  "statusUnknown": "unknown",
+
+  "redoAssessment": "Redo Assessment",
+  "deleteSession": "Delete Session",
+  "deleteSessionConfirmTitle": "Delete this session?",
+  "deleteSessionConfirmBody": "This will remove the session, its sensor data, and any uploaded video. This cannot be undone.",
+  "delete": "Delete",
+  "cancel": "Cancel",
+  "deletedConfirm": "Session deleted",
+
+  "noInternet": "You don't have internet. Check your connection and try again.",
+
+  "recordVideo": "Record Video",
+  "videoRecording": "Recording…",
+  "stopRecording": "Stop",
+  "uploadingVideo": "Uploading video…",
+  "videoUploaded": "Video uploaded",
+  "videoUploadFailed": "Video upload failed",
+
+  "labelSleepHours": "Sleep (hours)",
+  "labelBodyTemperature": "Body temperature (°C)",
+  "labelBloodSugar": "Blood sugar (mg/dL)",
+  "labelBloodPressure": "Blood pressure",
+  "labelHeadache": "Headache",
+  "labelDizzy": "Dizziness",
+  "labelFatigue": "Fatigue",
+  "labelArmPain": "Arm/hand pain",
+  "labelHandMovement": "Hand movement OK",
+  "labelFallsInjuries": "Falls/injuries since last session",
+  "questionnaireSkipped": "Skipped",
+  "questionnaireNotFilled": "Not filled",
 
   "languageToggleTooltip": "Change language"
 }

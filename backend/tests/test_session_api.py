@@ -255,7 +255,140 @@ class TestVideoUploadUrl:
         assert len(body['upload_url']) > 0
 
 
+class TestListSessionsRobustness:
+    def test_list_does_not_crash_on_row_missing_created_at(self, aws_setup):
+        """Pre-fix, a single row without `created_at` caused GET /sessions to
+        return 502 because the handler did `s['created_at']` directly. The
+        defensive `.get('created_at', '')` keeps the endpoint responsive even
+        if a malformed row sneaks in."""
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
+        ddb.Table(TABLE_NAME).put_item(Item={'session_id': 'no-timestamp', 'status': 'created'})
+        # And a well-formed one to make sure good rows still come through.
+        aws_setup.handler(apigw_event('POST', '/sessions'), None)
+
+        resp = aws_setup.handler(apigw_event('GET', '/sessions'), None)
+        assert resp['statusCode'] == 200
+        body = json.loads(resp['body'])
+        assert len(body['sessions']) == 2
+
+    def test_list_includes_has_video_flag(self, aws_setup):
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+        # Touch video_s3_key directly to simulate a session that has uploaded a video.
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
+        ddb.Table(TABLE_NAME).update_item(
+            Key={'session_id': session_id},
+            UpdateExpression='SET video_s3_key = :k',
+            ExpressionAttributeValues={':k': f'videos/{session_id}/video.mp4'},
+        )
+        resp = aws_setup.handler(apigw_event('GET', '/sessions'), None)
+        body = json.loads(resp['body'])
+        target = next(s for s in body['sessions'] if s['session_id'] == session_id)
+        assert target['has_video'] is True
+
+
+class TestSessionExistenceChecks:
+    def test_link_device_on_missing_session_returns_404(self, aws_setup):
+        resp = aws_setup.handler(apigw_event(
+            'PUT', '/sessions/{session_id}/device',
+            path_params={'session_id': 'made-up-id'},
+            body={'device_id': 'hope-glove-01'},
+        ), None)
+        assert resp['statusCode'] == 404
+
+    def test_video_upload_url_on_missing_session_returns_404(self, aws_setup):
+        resp = aws_setup.handler(apigw_event(
+            'POST', '/sessions/{session_id}/video-upload-url',
+            path_params={'session_id': 'made-up-id'},
+        ), None)
+        assert resp['statusCode'] == 404
+
+
+class TestDeleteSession:
+    def test_delete_existing_session_returns_200(self, aws_setup):
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+        resp = aws_setup.handler(apigw_event(
+            'DELETE', '/sessions/{session_id}',
+            path_params={'session_id': session_id},
+        ), None)
+        assert resp['statusCode'] == 200
+
+    def test_delete_removes_session(self, aws_setup):
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+        aws_setup.handler(apigw_event(
+            'DELETE', '/sessions/{session_id}',
+            path_params={'session_id': session_id},
+        ), None)
+        get_resp = aws_setup.handler(apigw_event(
+            'GET', '/sessions/{session_id}',
+            path_params={'session_id': session_id},
+        ), None)
+        assert get_resp['statusCode'] == 404
+
+    def test_delete_missing_session_returns_404(self, aws_setup):
+        resp = aws_setup.handler(apigw_event(
+            'DELETE', '/sessions/{session_id}',
+            path_params={'session_id': 'no-such-id'},
+        ), None)
+        assert resp['statusCode'] == 404
+
+
+class TestRedoAssessment:
+    def test_redo_clears_assessment_results(self, aws_setup):
+        """After a user taps "redo assessment", the next /ingest batch should be
+        treated as a fresh assessment. The router keys on assessment_results
+        presence, so removing the attribute is the canonical reset."""
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
+        ddb.Table(TABLE_NAME).update_item(
+            Key={'session_id': session_id},
+            UpdateExpression='SET assessment_results = :ar, #s = :s',
+            ExpressionAttributeNames={'#s': 'status'},
+            ExpressionAttributeValues={
+                ':ar': {'Reach': 'PASS', 'needed_training': []},
+                ':s': 'assessed',
+            },
+        )
+
+        resp = aws_setup.handler(apigw_event(
+            'POST', '/sessions/{session_id}/redo-assessment',
+            path_params={'session_id': session_id},
+        ), None)
+        assert resp['statusCode'] == 200
+
+        get_resp = aws_setup.handler(apigw_event('GET', '/sessions/{session_id}',
+                                                 path_params={'session_id': session_id}), None)
+        body = json.loads(get_resp['body'])
+        assert body['assessment_results'] is None
+        assert body['status'] == 'created'
+
+    def test_redo_on_missing_session_returns_404(self, aws_setup):
+        resp = aws_setup.handler(apigw_event(
+            'POST', '/sessions/{session_id}/redo-assessment',
+            path_params={'session_id': 'no-such-id'},
+        ), None)
+        assert resp['statusCode'] == 404
+
+
+class TestNonJsonBody:
+    def test_post_sessions_with_garbage_body_returns_400(self, aws_setup):
+        """Pre-fix, sending a non-JSON body to POST /sessions caused a 502
+        because handler() did json.loads() unguarded. Now it should 400."""
+        event = {
+            'httpMethod': 'POST',
+            'resource': '/sessions',
+            'pathParameters': {},
+            'body': 'this is not json',
+        }
+        resp = aws_setup.handler(event, None)
+        assert resp['statusCode'] == 400
+
+
 class TestUnknownRoute:
     def test_unknown_route_returns_404(self, aws_setup):
-        resp = aws_setup.handler(apigw_event('DELETE', '/sessions'), None)
+        resp = aws_setup.handler(apigw_event('PATCH', '/sessions'), None)
         assert resp['statusCode'] == 404
