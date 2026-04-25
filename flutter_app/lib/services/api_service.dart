@@ -115,28 +115,102 @@ class ApiService {
 
   Future<void> _simulateGlove(String deviceId) async {
     final rng = Random();
-    final samples = List.generate(100, (i) => {
-      // 50ms intervals matching firmware's delay(50) between samples
-      'time': i * 50,
-      // flex sensors: 0-90° range (finger bend angle)
-      'flex1': (30 + 30 * (0.5 + 0.5 * (i % 20) / 20) + rng.nextDouble() * 10 - 5).round(),
-      'flex2': (35 + 25 * (0.5 + 0.5 * (i % 25) / 25) + rng.nextDouble() * 10 - 5).round(),
-      // FSR sensors: 0-100 force percentage
-      'fsr1': (20 + 40 * (0.8 + rng.nextDouble() * 0.4)).round().clamp(0, 100),
-      'fsr2': (15 + 35 * (0.8 + rng.nextDouble() * 0.4)).round().clamp(0, 100),
-      // EMG: ~300 baseline with variation (matches firmware range)
-      'emg': (250 + rng.nextDouble() * 100).round(),
-      // Accelerometer: raw MPU6050 int16 LSB, default FS_SEL=0 → ±2g (16384 LSB/g);
-      // az ≈ 16384 at rest (1g gravity on z-axis).
-      'ax': (rng.nextDouble() * 2000 - 1000).round(),
-      'ay': (rng.nextDouble() * 1000 - 500).round(),
-      'az': (16000 + rng.nextDouble() * 1000 - 500).round(),
-      // Gyroscope: raw MPU6050 int16 LSB, default FS_SEL=0 → ±250°/s (131 LSB/(°/s)).
-      // See firmware/FIRMWARE.md#sensors for the canonical schema.
-      'gx': (rng.nextDouble() * 200 - 100).round(),
-      'gy': (rng.nextDouble() * 160 - 80).round(),
-      'gz': (rng.nextDouble() * 240 - 120).round(),
-    });
+
+    // Pick a random patient profile so each run produces different assessment
+    // results across the spectrum. The thresholds in
+    // backend/lambdas/hope_ingest/assess_logic.py are tuned for normalized
+    // (g / °/s) values, so we feed values in those units rather than raw LSB.
+    //   - Reach:        rom>60 AND 1<speed<3 AND traj>0.85 AND dev<2000
+    //   - Grasp:        force>50 AND flex>40
+    //   - Manipulation: traj>0.8 AND duration<6
+    //   - Release:      force<20 AND flex<20
+    //
+    // Profiles are tuned so each one steers `needed_training[0]` to a
+    // different exercise, so the demo doesn't always score the same one.
+    //   0 → fail Reach        (low gx, low speed)
+    //   1 → fail Grasp        (low force/flex, otherwise OK)
+    //   2 → fail Manipulation (low trajectory smoothness)
+    //   3 → fail Release      (high force/flex, otherwise OK)
+    final profile = rng.nextInt(4);
+
+    // gx in °/s integrated over 50ms; backend clamps |angle|<=90.
+    final gxAmplitude = [12.0, 80.0, 80.0, 80.0][profile];
+
+    // Mean |accel| target (in g) → drives `speed` (threshold: 1<speed<3).
+    final speedTarget = [0.5, 2.0, 2.0, 2.0][profile];
+
+    // Trajectory smoothness: how consistent consecutive accel-delta directions
+    // are. Constant-direction motion → traj near 1. Random noise → traj near 0.
+    // Keep this above 0.85 in all profiles so Reach's traj check is happy;
+    // we steer Manipulation FAIL via the timestep instead (see timeStepMs).
+    final trajSmoothness = [0.97, 0.97, 0.97, 0.97][profile];
+
+    // Time between samples in ms. Default 50ms → 100 samples = 5s, which
+    // satisfies Manipulation's `duration<6` rule. Profile 2 stretches to
+    // 70ms → ~7s, which trips Manipulation while leaving Reach untouched.
+    final timeStepMs = [50, 50, 70, 50][profile];
+
+    // flex/force baselines.
+    //   Grasp passes when force>50 AND flex>40.
+    //   Release passes when force<20 AND flex<20.
+    // Profile 1 sits low (Grasp fails, Release passes); profile 3 sits high
+    // (Grasp passes, Release fails).
+    final flexBase = [10.0, 10.0, 45.0, 55.0][profile];
+    final fsrBase  = [10.0, 10.0, 55.0, 60.0][profile];
+
+    // Build a continuous accel trajectory. We keep a slowly-rotating direction
+    // vector and step the accel along it, so consecutive deltas point the same
+    // way (high trajectory) for strong profiles and randomly (low) for weak.
+    double dirAngle = rng.nextDouble() * 2 * pi;
+    double prevAx = speedTarget * cos(dirAngle);
+    double prevAy = speedTarget * sin(dirAngle);
+    double prevAz = 0;
+
+    final samples = <Map<String, num>>[];
+    for (var i = 0; i < 100; i++) {
+      // Slowly drift the direction so consecutive accel deltas point the same
+      // way (high trajectory) for strong profiles. Weak profiles get added
+      // jitter on top so the deltas randomize.
+      dirAngle += 0.04 + (rng.nextDouble() * 2 - 1) * (1 - trajSmoothness) * 0.6;
+      final stepMag = speedTarget * (0.95 + rng.nextDouble() * 0.1);
+      prevAx = stepMag * cos(dirAngle);
+      prevAy = stepMag * sin(dirAngle);
+      prevAz = 0.3 * sin(dirAngle * 2);
+      // Add small noise scaled by (1-smoothness) so weak profiles get noisy
+      // deltas but strong profiles stay smooth.
+      prevAx += (rng.nextDouble() * 2 - 1) * (1 - trajSmoothness) * speedTarget;
+      prevAy += (rng.nextDouble() * 2 - 1) * (1 - trajSmoothness) * speedTarget;
+
+      // Reach-and-return arc on gx so rom integrates to a clear range.
+      final gx = gxAmplitude *
+          (i < 50 ? 1 : -1) *
+          (0.85 + rng.nextDouble() * 0.3);
+
+      samples.add({
+        // sample spacing — 50ms in normal profiles, 70ms in the
+        // Manipulation-fail profile so the batch spans >6s.
+        'time': i * timeStepMs,
+        // flex sensors: 0-90° range (finger bend angle) — integer
+        'flex1': (flexBase + rng.nextDouble() * 6 - 3).round().clamp(0, 90),
+        'flex2': (flexBase + rng.nextDouble() * 6 - 3).round().clamp(0, 90),
+        // FSR sensors: 0-100 force percentage — integer
+        'fsr1': (fsrBase + rng.nextDouble() * 6 - 3).round().clamp(0, 100),
+        'fsr2': (fsrBase + rng.nextDouble() * 6 - 3).round().clamp(0, 100),
+        // EMG: ~300 baseline with variation (matches firmware range)
+        'emg': (250 + rng.nextDouble() * 100).round(),
+        // Accel/gyro are floats in g and °/s respectively, matching the
+        // units assess_logic.py expects. Rounding to int (as we did before)
+        // collapsed prevAz≈0.3 to 0 and snapped speed/trajectory away from
+        // the assessment windows, which is why every session was failing
+        // Reach. See QUESTIONS.md for the diagnosis.
+        'ax': prevAx,
+        'ay': prevAy,
+        'az': prevAz,
+        'gx': gx,
+        'gy': rng.nextDouble() * 20 - 10,
+        'gz': rng.nextDouble() * 20 - 10,
+      });
+    }
 
     final body = jsonEncode({
       'device_id': deviceId,
