@@ -101,6 +101,9 @@
   "statusInProgress": "قيد التقدم",
   "statusUnknown": "غير معروف",
 
+  "nextExercise": "التمرين التالي",
+  "exerciseProgress": "التمرين {current} من {total}: {name}",
+
   "redoAssessment": "إعادة التقييم",
   "deleteSession": "حذف الجلسة",
   "deleteSessionConfirmTitle": "حذف هذه الجلسة؟",

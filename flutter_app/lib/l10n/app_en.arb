@@ -134,6 +134,16 @@
   "statusInProgress": "in progress",
   "statusUnknown": "unknown",
 
+  "nextExercise": "Next Exercise",
+  "exerciseProgress": "Exercise {current} of {total}: {name}",
+  "@exerciseProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"},
+      "name": {"type": "String"}
+    }
+  },
+
   "redoAssessment": "Redo Assessment",
   "deleteSession": "Delete Session",
   "deleteSessionConfirmTitle": "Delete this session?",

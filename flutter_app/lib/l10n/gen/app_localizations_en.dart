@@ -279,6 +279,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusUnknown => 'unknown';
 
   @override
+  String get nextExercise => 'Next Exercise';
+
+  @override
+  String exerciseProgress(int current, int total, String name) {
+    return 'Exercise $current of $total: $name';
+  }
+
+  @override
   String get redoAssessment => 'Redo Assessment';
 
   @override

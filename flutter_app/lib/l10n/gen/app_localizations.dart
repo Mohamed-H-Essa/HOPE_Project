@@ -602,6 +602,18 @@ abstract class AppLocalizations {
   /// **'unknown'**
   String get statusUnknown;
 
+  /// No description provided for @nextExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Exercise'**
+  String get nextExercise;
+
+  /// No description provided for @exerciseProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise {current} of {total}: {name}'**
+  String exerciseProgress(int current, int total, String name);
+
   /// No description provided for @redoAssessment.
   ///
   /// In en, this message translates to:

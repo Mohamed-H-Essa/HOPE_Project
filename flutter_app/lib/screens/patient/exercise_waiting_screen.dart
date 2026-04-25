@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../../services/exercise_videos.dart';
 import '../../state/session_provider.dart';
 import '../../widgets/error_snackbar.dart';
+import '../../widgets/exercise_video_player.dart';
 import '../../widgets/language_toggle.dart';
 import '../../widgets/video_recorder_widget.dart';
 import 'exercise_results_screen.dart';
@@ -17,6 +19,10 @@ class ExerciseWaitingScreen extends StatefulWidget {
 class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
   bool _polling = false;
   bool _navigated = false;
+  // Local-only counter for the tutorial carousel. The backend always scores
+  // needed_training[0] regardless of what the user is watching here — this
+  // index just drives which YouTube video and label are shown.
+  int _currentIndex = 0;
 
   void _startPolling() {
     setState(() => _polling = true);
@@ -29,8 +35,11 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
     final t = AppLocalizations.of(context);
     final neededTraining =
         provider.currentSession?.assessmentResults?.neededTraining ?? [];
-    final exerciseName =
-        neededTraining.isNotEmpty ? neededTraining.first : 'General';
+    final hasList = neededTraining.isNotEmpty;
+    // Clamp in case the list shrinks underneath us (e.g. redo-assessment).
+    final safeIndex = hasList ? _currentIndex.clamp(0, neededTraining.length - 1) : 0;
+    final exerciseName = hasList ? neededTraining[safeIndex] : 'General';
+    final isLast = !hasList || safeIndex >= neededTraining.length - 1;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (provider.errorMessage != null) {
@@ -59,9 +68,12 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
             const Icon(Icons.fitness_center, size: 64, color: Colors.teal),
             const SizedBox(height: 16),
             Text(
-              t.exerciseLabel(exerciseName),
+              hasList
+                  ? t.exerciseProgress(
+                      safeIndex + 1, neededTraining.length, exerciseName)
+                  : t.exerciseLabel(exerciseName),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
@@ -69,6 +81,20 @@ class _ExerciseWaitingScreenState extends State<ExerciseWaitingScreen> {
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.grey),
             ),
+            const SizedBox(height: 12),
+            ExerciseVideoPlayer(videoUrl: videoUrlFor(exerciseName)),
+            if (hasList && !isLast) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.skip_next),
+                  label: Text(t.nextExercise),
+                  onPressed: () =>
+                      setState(() => _currentIndex = safeIndex + 1),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             const VideoRecorderWidget(),
             const SizedBox(height: 16),

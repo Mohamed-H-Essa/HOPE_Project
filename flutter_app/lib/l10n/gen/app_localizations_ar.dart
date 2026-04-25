@@ -277,6 +277,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get statusUnknown => 'غير معروف';
 
   @override
+  String get nextExercise => 'التمرين التالي';
+
+  @override
+  String exerciseProgress(int current, int total, String name) {
+    return 'التمرين $current من $total: $name';
+  }
+
+  @override
   String get redoAssessment => 'إعادة التقييم';
 
   @override
