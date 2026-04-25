@@ -277,6 +277,30 @@ class AppLocalizationsAr extends AppLocalizations {
   String get statusUnknown => 'غير معروف';
 
   @override
+  String get dashboard => 'اللوحة';
+
+  @override
+  String get dashboardWelcomePatient => 'مرحباً بعودتك';
+
+  @override
+  String get dashboardWelcomeDoctor => 'مرحباً دكتور';
+
+  @override
+  String get dashboardSubtitle => 'نتائج التمارين عبر الزمن';
+
+  @override
+  String get dashboardEmpty =>
+      'لا توجد بيانات تمارين بعد — أكمل جلسة لترى تقدمك هنا.';
+
+  @override
+  String get dashboardEmptyForCategory => 'لا توجد بيانات بعد';
+
+  @override
+  String dashboardSession(int n) {
+    return 'الجلسة $n';
+  }
+
+  @override
   String get nextExercise => 'التمرين التالي';
 
   @override

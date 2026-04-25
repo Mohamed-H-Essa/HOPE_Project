@@ -101,6 +101,14 @@
   "statusInProgress": "قيد التقدم",
   "statusUnknown": "غير معروف",
 
+  "dashboard": "اللوحة",
+  "dashboardWelcomePatient": "مرحباً بعودتك",
+  "dashboardWelcomeDoctor": "مرحباً دكتور",
+  "dashboardSubtitle": "نتائج التمارين عبر الزمن",
+  "dashboardEmpty": "لا توجد بيانات تمارين بعد — أكمل جلسة لترى تقدمك هنا.",
+  "dashboardEmptyForCategory": "لا توجد بيانات بعد",
+  "dashboardSession": "الجلسة {n}",
+
   "nextExercise": "التمرين التالي",
   "exerciseProgress": "التمرين {current} من {total}: {name}",
 

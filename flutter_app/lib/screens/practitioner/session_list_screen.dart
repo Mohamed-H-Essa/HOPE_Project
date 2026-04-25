@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/session_provider.dart';
 import '../../widgets/language_toggle.dart';
+import '../dashboard/dashboard_screen.dart';
 import 'session_detail_screen.dart';
 
 class SessionListScreen extends StatefulWidget {
@@ -66,7 +67,20 @@ class _SessionListScreenState extends State<SessionListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(t.sessionHistory),
-        actions: const [LanguageToggle()],
+        actions: [
+          IconButton(
+            tooltip: t.dashboard,
+            icon: const Icon(Icons.insights),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const DashboardScreen(
+                    mode: DashboardMode.practitioner),
+              ),
+            ),
+          ),
+          const LanguageToggle(),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () => context.read<SessionProvider>().loadSessionHistory(),

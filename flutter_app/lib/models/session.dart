@@ -8,6 +8,7 @@ class SessionSummary {
   final int? assessmentPassed;
   final int? assessmentTotal;
   final List<String>? neededTraining;
+  final String? exerciseName;
   final double? exerciseOverallPercent;
 
   const SessionSummary({
@@ -17,6 +18,7 @@ class SessionSummary {
     this.assessmentPassed,
     this.assessmentTotal,
     this.neededTraining,
+    this.exerciseName,
     this.exerciseOverallPercent,
   });
 
@@ -35,6 +37,7 @@ class SessionSummary {
               ?.map((e) => e as String)
               .toList()
           : null,
+      exerciseName: json['exercise_name'] as String?,
       exerciseOverallPercent:
           (json['exercise_overall_percent'] as num?)?.toDouble(),
     );

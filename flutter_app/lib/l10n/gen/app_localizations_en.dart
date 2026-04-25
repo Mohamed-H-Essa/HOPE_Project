@@ -279,6 +279,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusUnknown => 'unknown';
 
   @override
+  String get dashboard => 'Dashboard';
+
+  @override
+  String get dashboardWelcomePatient => 'Welcome back';
+
+  @override
+  String get dashboardWelcomeDoctor => 'Welcome, Doctor';
+
+  @override
+  String get dashboardSubtitle => 'Exercise scores over time';
+
+  @override
+  String get dashboardEmpty =>
+      'No exercise data yet — finish a session to see your progress here.';
+
+  @override
+  String get dashboardEmptyForCategory => 'No data yet';
+
+  @override
+  String dashboardSession(int n) {
+    return 'Session $n';
+  }
+
+  @override
   String get nextExercise => 'Next Exercise';
 
   @override

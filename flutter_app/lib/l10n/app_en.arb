@@ -134,6 +134,19 @@
   "statusInProgress": "in progress",
   "statusUnknown": "unknown",
 
+  "dashboard": "Dashboard",
+  "dashboardWelcomePatient": "Welcome back",
+  "dashboardWelcomeDoctor": "Welcome, Doctor",
+  "dashboardSubtitle": "Exercise scores over time",
+  "dashboardEmpty": "No exercise data yet — finish a session to see your progress here.",
+  "dashboardEmptyForCategory": "No data yet",
+  "dashboardSession": "Session {n}",
+  "@dashboardSession": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+
   "nextExercise": "Next Exercise",
   "exerciseProgress": "Exercise {current} of {total}: {name}",
   "@exerciseProgress": {

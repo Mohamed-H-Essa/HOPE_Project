@@ -602,6 +602,48 @@ abstract class AppLocalizations {
   /// **'unknown'**
   String get statusUnknown;
 
+  /// No description provided for @dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get dashboard;
+
+  /// No description provided for @dashboardWelcomePatient.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get dashboardWelcomePatient;
+
+  /// No description provided for @dashboardWelcomeDoctor.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome, Doctor'**
+  String get dashboardWelcomeDoctor;
+
+  /// No description provided for @dashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise scores over time'**
+  String get dashboardSubtitle;
+
+  /// No description provided for @dashboardEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No exercise data yet — finish a session to see your progress here.'**
+  String get dashboardEmpty;
+
+  /// No description provided for @dashboardEmptyForCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'No data yet'**
+  String get dashboardEmptyForCategory;
+
+  /// No description provided for @dashboardSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session {n}'**
+  String dashboardSession(int n);
+
   /// No description provided for @nextExercise.
   ///
   /// In en, this message translates to:

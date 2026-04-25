@@ -271,6 +271,29 @@ class TestListSessionsRobustness:
         body = json.loads(resp['body'])
         assert len(body['sessions']) == 2
 
+    def test_list_includes_exercise_name(self, aws_setup):
+        """The dashboard needs to know which exercise category each session
+        belongs to. The list response surfaces exercise_name from
+        exercise_results.exercise."""
+        create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
+        session_id = json.loads(create_resp['body'])['session_id']
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
+        from decimal import Decimal
+        ddb.Table(TABLE_NAME).update_item(
+            Key={'session_id': session_id},
+            UpdateExpression='SET exercise_results = :er',
+            ExpressionAttributeValues={
+                ':er': {'exercise': 'Reach', 'overall_percent': Decimal('72.5')},
+            },
+        )
+        resp = aws_setup.handler(apigw_event('GET', '/sessions'), None)
+        target = next(
+            s for s in json.loads(resp['body'])['sessions']
+            if s['session_id'] == session_id
+        )
+        assert target['exercise_name'] == 'Reach'
+        assert target['exercise_overall_percent'] == 72.5
+
     def test_list_includes_has_video_flag(self, aws_setup):
         create_resp = aws_setup.handler(apigw_event('POST', '/sessions'), None)
         session_id = json.loads(create_resp['body'])['session_id']

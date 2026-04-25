@@ -4,6 +4,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/session_provider.dart';
 import '../../widgets/error_snackbar.dart';
 import '../../widgets/language_toggle.dart';
+import '../dashboard/dashboard_screen.dart';
 import 'assess_waiting_screen.dart';
 
 class SessionStartScreen extends StatelessWidget {
@@ -68,6 +69,18 @@ class SessionStartScreen extends StatelessWidget {
                       onPressed: () =>
                           context.read<SessionProvider>().startSession(),
                     ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.insights),
+                label: Text(t.dashboard),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const DashboardScreen(mode: DashboardMode.patient),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

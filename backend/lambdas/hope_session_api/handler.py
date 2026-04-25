@@ -181,7 +181,8 @@ def list_sessions():
                 'total': total,
                 'needed_training': ar.get('needed_training', [])
             },
-            'exercise_overall_percent': er.get('overall_percent') if er else None
+            'exercise_name': er.get('exercise') if er else None,
+            'exercise_overall_percent': er.get('overall_percent') if er else None,
         })
     return respond(200, {'sessions': summaries})
 
